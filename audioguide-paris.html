@@ -1,0 +1,1101 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Audioguide IA · Musées de Paris</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garant:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0a0806;--surface:#14100a;--card:#1b1510;--border:#2a2016;--gold:#c9a55e;--gold-dim:rgba(201,165,94,0.1);--gold-glow:rgba(201,165,94,0.18);--cream:#ede3ce;--muted:#7a6a50;--green:#5a9a6e;}
+body{background:var(--bg);color:var(--cream);font-family:'DM Sans',sans-serif;font-size:15px;line-height:1.6;min-height:100vh}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse at 15% 60%,rgba(201,165,94,0.04),transparent 55%),radial-gradient(ellipse at 85% 15%,rgba(180,110,50,0.03),transparent 50%);pointer-events:none;z-index:0}
+.app{max-width:600px;margin:0 auto;padding:0 22px 80px;position:relative;z-index:1}
+/* HEADER */
+.header{padding:26px 0 22px;text-align:center;border-bottom:1px solid var(--border);margin-bottom:30px;position:relative}
+.header-eyebrow{font-size:10px;letter-spacing:5px;text-transform:uppercase;color:var(--gold);margin-bottom:8px;display:flex;align-items:center;justify-content:center;gap:10px}
+.header-eyebrow::before,.header-eyebrow::after{content:'';flex:1;max-width:40px;height:1px;background:var(--gold);opacity:.35}
+.header h1{font-family:'Cormorant Garant',serif;font-size:28px;font-weight:300;font-style:italic}
+.settings-btn{position:absolute;right:0;top:50%;transform:translateY(-50%);background:transparent;border:1px solid var(--border);color:var(--muted);width:34px;height:34px;border-radius:50%;cursor:pointer;font-size:14px;transition:all .2s;display:flex;align-items:center;justify-content:center}
+.settings-btn:hover{border-color:var(--gold);color:var(--cream)}
+.settings-btn.premium{border-color:var(--green);color:var(--green)}
+.settings-btn.warn{border-color:#c9855e;color:#c9855e;animation:pulse-warn 2s ease infinite}
+@keyframes pulse-warn{0%,100%{opacity:1}50%{opacity:.5}}
+/* STEPS */
+.step{display:none}
+.step.active{display:block;animation:fadeUp .38s cubic-bezier(.4,0,.2,1)}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.step-eyebrow{font-size:10px;letter-spacing:4px;text-transform:uppercase;color:var(--gold);margin-bottom:10px;opacity:.75}
+.step-title{font-family:'Cormorant Garant',serif;font-size:24px;font-weight:400;margin-bottom:26px}
+/* PROFILES */
+.profiles-grid{display:grid;gap:9px}
+.profile-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px 20px;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:16px;user-select:none}
+.profile-card:hover{border-color:var(--gold);background:var(--surface);transform:translateX(4px)}
+.profile-card.selected{border-color:var(--gold);background:var(--gold-dim);box-shadow:inset 0 0 0 1px rgba(201,165,94,.3)}
+.profile-emoji{font-size:26px;flex-shrink:0;width:38px;text-align:center}
+.profile-label{font-family:'Cormorant Garant',serif;font-size:18px;font-weight:600}
+.profile-sub{font-size:12px;color:var(--muted);margin-top:1px}
+/* MUSEUM TABS */
+.museum-tabs{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.museum-tab{padding:7px 16px;border:1px solid var(--border);border-radius:100px;cursor:pointer;font-size:12px;color:var(--muted);background:transparent;transition:all .2s;font-family:'DM Sans',sans-serif;letter-spacing:.4px}
+.museum-tab:hover{border-color:var(--gold);color:var(--cream)}
+.museum-tab.active{border-color:var(--gold);color:var(--gold);background:var(--gold-dim)}
+/* SEARCH */
+.search-wrap{position:relative;margin-bottom:16px}
+.search-input{width:100%;padding:10px 14px 10px 36px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--cream);font-family:'DM Sans',sans-serif;font-size:13px;outline:none;transition:border-color .2s}
+.search-input:focus{border-color:var(--gold)}
+.search-input::placeholder{color:var(--muted)}
+.search-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px;pointer-events:none}
+/* ARTWORKS */
+.artworks-grid{display:grid;gap:9px}
+.section-header{padding:10px 0 6px;font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--gold);opacity:.65;border-bottom:1px solid var(--border);margin-top:6px}
+.artwork-card{background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;cursor:pointer;transition:all .2s;display:flex;height:100px}
+.artwork-card:hover{border-color:var(--gold);transform:translateY(-1px)}
+.artwork-card.selected{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold),0 4px 20px var(--gold-glow)}
+.artwork-thumb{width:80px;flex-shrink:0;background:var(--surface);overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:28px}
+.artwork-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.artwork-meta{padding:12px 14px;display:flex;flex-direction:column;justify-content:center;overflow:hidden}
+.artwork-meta-title{font-family:'Cormorant Garant',serif;font-size:15px;font-weight:600;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.artwork-meta-artist{font-size:11px;color:var(--gold);margin-bottom:1px}
+.artwork-meta-room{font-size:10px;color:var(--muted)}
+/* SCAN BTN */
+.scan-btn{width:100%;padding:16px 20px;background:transparent;border:1px solid var(--gold);border-radius:12px;color:var(--cream);font-family:'Cormorant Garant',serif;font-size:17px;cursor:pointer;transition:all .25s;display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:20px;position:relative;overflow:hidden}
+.scan-btn::before{content:'';position:absolute;inset:0;background:var(--gold-dim);transform:scaleX(0);transform-origin:left;transition:transform .3s}
+.scan-btn:hover::before{transform:scaleX(1)}
+.scan-btn-inner{position:relative;z-index:1;display:flex;align-items:center;gap:12px}
+.scan-divider{display:flex;align-items:center;gap:14px;margin-bottom:16px;color:var(--muted);font-size:10px;letter-spacing:3px;text-transform:uppercase}
+.scan-divider::before,.scan-divider::after{content:'';flex:1;height:1px;background:var(--border)}
+/* RECO */
+.reco-result{display:none;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:20px}
+.reco-result.active{display:block;animation:fadeUp .3s ease}
+.reco-result.found{border-color:var(--gold)}
+.reco-lbl{font-size:9px;letter-spacing:3px;text-transform:uppercase;margin-bottom:8px}
+.reco-lbl.ok{color:var(--gold)}
+.reco-lbl.ko{color:var(--muted)}
+.reco-title{font-family:'Cormorant Garant',serif;font-size:19px;font-weight:600;margin-bottom:2px}
+.reco-artist{font-size:12px;color:var(--gold);margin-bottom:12px}
+.reco-go{width:100%;padding:12px;background:var(--gold);color:#0a0806;border:none;border-radius:9px;font-family:'Cormorant Garant',serif;font-size:15px;font-weight:600;cursor:pointer;transition:all .2s}
+.reco-go:hover{background:#d6b36a}
+.reco-alt{width:100%;padding:10px;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:9px;font-family:'DM Sans',sans-serif;font-size:12px;cursor:pointer;transition:all .2s;margin-top:7px}
+.reco-alt:hover{border-color:var(--gold);color:var(--cream)}
+/* GUIDE */
+.artwork-display{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:16px}
+.artwork-img-wrap{height:240px;overflow:hidden;background:var(--surface);position:relative;display:flex;align-items:center;justify-content:center;font-size:80px}
+.artwork-img-wrap img{width:100%;height:100%;object-fit:cover;display:block;position:relative;z-index:1}
+.artwork-img-overlay{position:absolute;bottom:0;left:0;right:0;height:80px;background:linear-gradient(to top,var(--card),transparent);z-index:2;pointer-events:none}
+.artwork-info-block{padding:16px 20px}
+.ait{font-family:'Cormorant Garant',serif;font-size:21px;font-weight:600;margin-bottom:2px}
+.aia{font-size:13px;color:var(--gold);margin-bottom:2px}
+.air{font-size:10px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase}
+.profile-badge{display:inline-flex;align-items:center;gap:7px;background:var(--gold-dim);border:1px solid rgba(201,165,94,.35);border-radius:100px;padding:5px 14px;font-size:11px;color:var(--gold);margin-bottom:16px}
+.premium-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(90,154,110,0.1);border:1px solid rgba(90,154,110,.4);border-radius:100px;padding:3px 10px;font-size:10px;color:var(--green);margin-left:8px;letter-spacing:.5px}
+.gen-btn{width:100%;padding:14px;background:var(--gold);color:#0a0806;border:none;border-radius:10px;font-family:'Cormorant Garant',serif;font-size:17px;font-weight:600;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:12px}
+.gen-btn:hover{background:#d6b36a;transform:translateY(-1px);box-shadow:0 8px 28px var(--gold-glow)}
+.gen-btn:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none}
+/* LOADING */
+.loading{display:none;text-align:center;padding:24px 0 16px;color:var(--muted)}
+.loading.active{display:block}
+.loading-dots{display:flex;justify-content:center;gap:7px;margin-bottom:10px}
+.loading-dots span{width:7px;height:7px;border-radius:50%;background:var(--gold);animation:dp 1.3s ease infinite}
+.loading-dots span:nth-child(2){animation-delay:.22s}
+.loading-dots span:nth-child(3){animation-delay:.44s}
+@keyframes dp{0%,80%,100%{transform:scale(.5);opacity:.25}40%{transform:scale(1);opacity:1}}
+/* AUDIO PLAYER */
+.audio-player{display:none;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:12px}
+.audio-player.active{display:block;animation:fadeUp .4s ease}
+.player-top{display:flex;align-items:center;gap:14px;margin-bottom:16px}
+.play-btn{width:46px;height:46px;border-radius:50%;background:var(--gold);color:#0a0806;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;transition:all .2s}
+.play-btn:hover{background:#d6b36a;transform:scale(1.07)}
+.play-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.player-meta{flex:1;min-width:0}
+.player-title{font-family:'Cormorant Garant',serif;font-size:15px;font-weight:600;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.player-status{font-size:11px;color:var(--gold);letter-spacing:.4px}
+.waveform{display:flex;align-items:center;gap:3px;height:26px;margin-bottom:16px}
+.wbar{flex:1;background:var(--border);border-radius:2px;height:4px}
+.waveform.playing .wbar{background:var(--gold);animation:wv 1.1s ease infinite}
+.waveform.playing .wbar:nth-child(1){animation-delay:0s;--h:10px}.waveform.playing .wbar:nth-child(2){animation-delay:.09s;--h:18px}.waveform.playing .wbar:nth-child(3){animation-delay:.18s;--h:22px}.waveform.playing .wbar:nth-child(4){animation-delay:.27s;--h:14px}.waveform.playing .wbar:nth-child(5){animation-delay:.36s;--h:20px}.waveform.playing .wbar:nth-child(6){animation-delay:.45s;--h:26px}.waveform.playing .wbar:nth-child(7){animation-delay:.54s;--h:16px}.waveform.playing .wbar:nth-child(8){animation-delay:.63s;--h:22px}.waveform.playing .wbar:nth-child(9){animation-delay:.72s;--h:12px}.waveform.playing .wbar:nth-child(10){animation-delay:.81s;--h:18px}.waveform.playing .wbar:nth-child(11){animation-delay:.9s;--h:24px}.waveform.playing .wbar:nth-child(12){animation-delay:.99s;--h:10px}
+@keyframes wv{0%,100%{height:4px}50%{height:var(--h,14px)}}
+.transcript{font-size:13px;line-height:1.85;color:#a89272;font-style:italic;border-top:1px solid var(--border);padding-top:14px;max-height:180px;overflow-y:auto}
+.transcript::-webkit-scrollbar{width:3px}
+.transcript::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+/* NAV */
+.nav-bar{display:flex;align-items:center;margin-bottom:24px;gap:12px}
+.back-btn{background:transparent;border:1px solid var(--border);color:var(--muted);padding:7px 14px;border-radius:100px;cursor:pointer;font-size:12px;font-family:'DM Sans',sans-serif;transition:all .2s;letter-spacing:.3px}
+.back-btn:hover{border-color:var(--gold);color:var(--cream)}
+.progress{display:flex;gap:5px;margin-left:auto}
+.pdot{width:6px;height:6px;border-radius:50%;background:var(--border);transition:background .3s}
+.pdot.done{background:var(--gold)}
+.cta-btn{width:100%;padding:13px;background:transparent;border:1px solid rgba(201,165,94,.3);color:var(--gold);border-radius:10px;font-family:'Cormorant Garant',serif;font-size:15px;cursor:pointer;transition:all .2s;margin-top:10px;letter-spacing:.3px}
+.cta-btn:hover{background:var(--gold-dim);border-color:var(--gold)}
+.cta-btn:disabled{opacity:.3;cursor:not-allowed}
+/* CAMERA */
+.cam-overlay{display:none;position:fixed;inset:0;background:rgba(5,4,3,.97);z-index:200;flex-direction:column;align-items:center;padding:24px 20px;overflow-y:auto}
+.cam-overlay.active{display:flex;animation:fadeUp .3s ease}
+.cam-header{width:100%;max-width:480px;display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-shrink:0}
+.cam-title{font-family:'Cormorant Garant',serif;font-size:18px;font-weight:400;font-style:italic}
+.cam-close{background:transparent;border:1px solid var(--border);color:var(--muted);width:34px;height:34px;border-radius:50%;cursor:pointer;font-size:14px;transition:all .2s;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.cam-close:hover{border-color:var(--gold);color:var(--cream)}
+.cam-vp{width:100%;max-width:480px;border-radius:12px;overflow:hidden;background:#000;aspect-ratio:4/3;position:relative;flex-shrink:0}
+#cam-video{width:100%;height:100%;object-fit:cover;display:block}
+#cam-canvas{display:none}
+.scan-frame{position:absolute;inset:0;pointer-events:none}
+.sc{position:absolute;width:28px;height:28px;border-color:var(--gold);border-style:solid;opacity:.85}
+.sc.tl{top:12px;left:12px;border-width:2px 0 0 2px;border-radius:4px 0 0 0}
+.sc.tr{top:12px;right:12px;border-width:2px 2px 0 0;border-radius:0 4px 0 0}
+.sc.bl{bottom:12px;left:12px;border-width:0 0 2px 2px;border-radius:0 0 0 4px}
+.sc.br{bottom:12px;right:12px;border-width:0 2px 2px 0;border-radius:0 0 4px 0}
+.scan-beam{position:absolute;left:12px;right:12px;height:1px;background:linear-gradient(90deg,transparent,var(--gold) 30%,var(--gold) 70%,transparent);animation:beam 2.8s ease-in-out infinite;opacity:0}
+@keyframes beam{0%{top:12px;opacity:0}10%{opacity:.7}50%{top:calc(100% - 12px);opacity:.7}90%{opacity:0}100%{top:12px;opacity:0}}
+.cam-hint{position:absolute;bottom:0;left:0;right:0;padding:10px 14px;background:linear-gradient(to top,rgba(0,0,0,.75),transparent);font-size:11px;color:rgba(237,227,206,.7);text-align:center}
+.cam-actions{width:100%;max-width:480px;margin-top:16px;display:flex;flex-direction:column;gap:10px;flex-shrink:0}
+.cap-btn{width:100%;padding:14px;background:var(--gold);color:#0a0806;border:none;border-radius:10px;font-family:'Cormorant Garant',serif;font-size:16px;font-weight:600;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:10px}
+.cap-btn:hover{background:#d6b36a}
+.cap-btn:disabled{opacity:.45;cursor:not-allowed}
+.cam-note{font-size:12px;color:var(--muted);text-align:center;line-height:1.7}
+.cam-loading{display:none;text-align:center;padding:14px 0}
+.cam-loading.active{display:block}
+/* SETTINGS MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:300;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.active{display:flex;animation:fadeIn .2s ease}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:28px;width:100%;max-width:460px;animation:fadeUp .3s ease}
+.modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}
+.modal-title{font-family:'Cormorant Garant',serif;font-size:22px;font-weight:600}
+.modal-close{background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:18px;padding:4px}
+.modal-close:hover{color:var(--cream)}
+.settings-section{margin-bottom:24px}
+.settings-label{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--gold);margin-bottom:10px;opacity:.8}
+.settings-desc{font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:12px}
+.settings-input{width:100%;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--cream);font-family:'DM Sans',sans-serif;font-size:13px;outline:none;transition:border-color .2s;font-family:monospace}
+.settings-input:focus{border-color:var(--gold)}
+.settings-input::placeholder{color:var(--muted)}
+.voice-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+.voice-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px;cursor:pointer;transition:all .2s;text-align:center}
+.voice-card:hover{border-color:var(--gold)}
+.voice-card.selected{border-color:var(--gold);background:var(--gold-dim)}
+.voice-card-icon{font-size:22px;margin-bottom:4px}
+.voice-card-name{font-size:12px;font-weight:500;margin-bottom:2px}
+.voice-card-desc{font-size:10px;color:var(--muted)}
+.save-btn{width:100%;padding:13px;background:var(--gold);color:#0a0806;border:none;border-radius:9px;font-family:'Cormorant Garant',serif;font-size:16px;font-weight:600;cursor:pointer;transition:all .2s}
+.save-btn:hover{background:#d6b36a}
+.key-status{display:none;font-size:12px;padding:8px 12px;border-radius:7px;margin-top:10px;text-align:center}
+.key-status.ok{display:block;background:rgba(90,154,110,0.12);border:1px solid rgba(90,154,110,.3);color:var(--green)}
+.key-status.ko{display:block;background:rgba(192,97,74,0.1);border:1px solid rgba(192,97,74,.3);color:#c0614a}
+.key-link{font-size:11px;color:var(--muted);text-align:center;margin-top:8px}
+.key-link a{color:var(--gold);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="header">
+    <div class="header-eyebrow">Audioguide IA</div>
+    <h1>Musées de Paris</h1>
+    <button class="settings-btn" id="settings-btn" onclick="openSettings()" title="Paramètres audio">⚙</button>
+  </header>
+
+  <!-- STEP 1: PROFIL -->
+  <div id="step-profile" class="step active">
+    <p class="step-eyebrow">Étape 1 · Profil</p>
+    <h2 class="step-title">Qui visitez-vous aujourd'hui ?</h2>
+    <div class="profiles-grid" id="profiles-grid"></div>
+    <button class="cta-btn" id="profile-next" disabled onclick="goToArtworks()">Choisir une œuvre →</button>
+  </div>
+
+  <!-- STEP 2: ŒUVRE -->
+  <div id="step-artwork" class="step">
+    <div class="nav-bar">
+      <button class="back-btn" onclick="goTo('profile')">← Profil</button>
+      <div class="progress"><div class="pdot done"></div><div class="pdot done"></div><div class="pdot"></div></div>
+    </div>
+    <p class="step-eyebrow">Étape 2 · Collection</p>
+    <h2 class="step-title">Choisissez une œuvre</h2>
+    <button class="scan-btn" onclick="openCamera()">
+      <div class="scan-btn-inner"><span style="font-size:20px">📷</span>
+        <div style="text-align:left"><div>Scanner l'œuvre devant vous</div>
+          <div style="font-family:'DM Sans',sans-serif;font-size:11px;color:var(--muted);margin-top:1px">Identification automatique par IA</div></div>
+      </div>
+    </button>
+    <div class="reco-result" id="reco-result"></div>
+    <div class="scan-divider">ou parcourir</div>
+    <div class="museum-tabs" id="museum-tabs"></div>
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input class="search-input" id="search-input" type="text" placeholder="Rechercher une œuvre ou un artiste…" oninput="filterArtworks(this.value)">
+    </div>
+    <div class="artworks-grid" id="artworks-grid"></div>
+    <button class="cta-btn" id="artwork-next" disabled onclick="goToGuide()">Démarrer mon guide →</button>
+  </div>
+
+  <!-- STEP 3: GUIDE -->
+  <div id="step-guide" class="step">
+    <div class="nav-bar">
+      <button class="back-btn" onclick="goTo('artwork')">← Œuvres</button>
+      <div class="progress"><div class="pdot done"></div><div class="pdot done"></div><div class="pdot done"></div></div>
+    </div>
+    <div id="artwork-display" class="artwork-display"></div>
+    <div id="badge-wrap"></div>
+    <button class="gen-btn" id="gen-btn" onclick="generateGuide()">🎧 Générer mon audioguide</button>
+    <div class="loading" id="loading">
+      <div class="loading-dots"><span></span><span></span><span></span></div>
+      <div style="font-size:11px;letter-spacing:2px;text-transform:uppercase" id="loading-text">Personnalisation en cours…</div>
+    </div>
+    <div class="audio-player" id="audio-player">
+      <div class="player-top">
+        <button class="play-btn" id="play-btn" onclick="togglePlay()">▶</button>
+        <div class="player-meta">
+          <div class="player-title" id="player-title"></div>
+          <div class="player-status" id="player-status">Prêt à écouter</div>
+        </div>
+      </div>
+      <div class="waveform" id="waveform">
+        <div class="wbar"></div><div class="wbar"></div><div class="wbar"></div><div class="wbar"></div>
+        <div class="wbar"></div><div class="wbar"></div><div class="wbar"></div><div class="wbar"></div>
+        <div class="wbar"></div><div class="wbar"></div><div class="wbar"></div><div class="wbar"></div>
+      </div>
+      <div class="transcript" id="transcript"></div>
+    </div>
+    <button class="cta-btn" onclick="goTo('artwork')">← Voir d'autres œuvres</button>
+  </div>
+</div>
+
+<!-- CAMERA -->
+<div class="cam-overlay" id="cam-overlay">
+  <div class="cam-header"><div class="cam-title">Identifier une œuvre</div><button class="cam-close" onclick="closeCamera()">✕</button></div>
+  <div class="cam-vp">
+    <video id="cam-video" autoplay playsinline muted></video><canvas id="cam-canvas"></canvas>
+    <div class="scan-frame"><div class="sc tl"></div><div class="sc tr"></div><div class="sc bl"></div><div class="sc br"></div><div class="scan-beam"></div></div>
+    <div class="cam-hint" id="cam-hint">Centrez l'œuvre dans le cadre</div>
+  </div>
+  <div class="cam-actions">
+    <div class="cam-loading" id="cam-loading"><div class="loading-dots"><span></span><span></span><span></span></div><div style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted)">Identification en cours…</div></div>
+    <button class="cap-btn" id="cap-btn" onclick="captureAndIdentify()"><span>🔍</span> Identifier cette œuvre</button>
+    <p class="cam-note">L'IA reconnaît l'œuvre depuis la photo — même de loin, même avec des reflets.</p>
+  </div>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div class="modal-overlay" id="settings-modal">
+  <div class="modal" style="max-height:90vh;overflow-y:auto">
+    <div class="modal-header">
+      <div class="modal-title">Paramètres</div>
+      <button class="modal-close" onclick="closeSettings()">✕</button>
+    </div>
+    <div class="settings-section">
+      <div class="settings-label">Clé API Anthropic ✱ obligatoire</div>
+      <div class="settings-desc">Nécessaire pour générer les commentaires audio et identifier les œuvres par photo. Obtenez votre clé sur console.anthropic.com.</div>
+      <input class="settings-input" id="anth-key-input" type="password" placeholder="sk-ant-…">
+      <div class="key-status" id="anth-key-status"></div>
+      <div class="key-link"><a href="https://console.anthropic.com" target="_blank">→ console.anthropic.com</a></div>
+    </div>
+    <div class="settings-section">
+      <div class="settings-label">Voix ElevenLabs (optionnel)</div>
+      <div class="settings-desc">Remplacez la voix navigateur par une voix humaine professionnelle. Compte gratuit sur elevenlabs.io (10 000 caractères/mois).</div>
+      <input class="settings-input" id="el-key-input" type="password" placeholder="Clé API ElevenLabs (optionnel)">
+      <div class="key-status" id="key-status"></div>
+      <div class="key-link"><a href="https://elevenlabs.io" target="_blank">→ elevenlabs.io</a></div>
+    </div>
+    <div class="settings-section">
+      <div class="settings-label">Choisir une voix</div>
+      <div class="voice-grid" id="voice-grid"></div>
+    </div>
+    <button class="save-btn" onclick="saveSettings()">Enregistrer</button>
+  </div>
+</div>
+
+<script>
+/* ══════════════════════════════════════════════
+   PROFILES
+══════════════════════════════════════════════ */
+const profiles=[
+  {id:'child',emoji:'🧒',label:'Enfant',sub:'6–12 ans',rate:.84,pitch:1.1,
+   prompt:'Tu t\'adresses à un enfant de 6 à 12 ans. Mots très simples. Comparaisons avec le quotidien. Enthousiaste. Une question amusante à la fin. Tutoie. Soixante-dix mots maximum.'},
+  {id:'family',emoji:'👨‍👩‍👧',label:'Famille',sub:'Parents & enfants',rate:.86,pitch:1,
+   prompt:'Tu t\'adresses à une famille. Une info fascinante pour les adultes. Une observation amusante pour les enfants. Cent mots maximum.'},
+  {id:'amateur',emoji:'🎨',label:'Amateur d\'art',sub:'Curieux & passionné',rate:.88,pitch:1,
+   prompt:'Tu t\'adresses à un amateur d\'art cultivé. Contexte historique. Technique. Anecdote méconnue. Cent-vingt mots maximum.'},
+  {id:'historian',emoji:'📜',label:'Passionné d\'histoire',sub:'Histoire & contexte',rate:.88,pitch:1,
+   prompt:'Tu t\'adresses à quelqu\'un passionné par l\'histoire. Contexte historique, politique et social de l\'époque. Cent-vingt mots maximum.'},
+  {id:'expert',emoji:'🔬',label:'Expert',sub:'Analyse approfondie',rate:.9,pitch:1,
+   prompt:'Tu t\'adresses à un expert ou critique d\'art. Analyse technique, stylistique et symbolique. Références aux mouvements et à l\'héritage. Cent-cinquante mots maximum.'}
+];
+
+/* ══════════════════════════════════════════════
+   VOICES (ElevenLabs)
+══════════════════════════════════════════════ */
+const voices=[
+  {id:'pNInz6obpgDQGcFmaJgB',name:'Adam',desc:'Voix masculine, chaleureuse',icon:'🎙️'},
+  {id:'EXAVITQu4vr4xnSDxMaL',name:'Sarah',desc:'Voix féminine, posée',icon:'🎤'},
+  {id:'VR6AewLTigWG4xSOukaG',name:'Arnold',desc:'Voix masculine, posée',icon:'🗣️'},
+  {id:'21m00Tcm4TlvDq8ikWAM',name:'Rachel',desc:'Voix féminine, douce',icon:'💬'}
+];
+
+/* ══════════════════════════════════════════════
+   MUSEUMS & ARTWORKS
+══════════════════════════════════════════════ */
+// Shared Nymphéas image (generic water lilies for prototype)
+const NL='https://upload.wikimedia.org/wikipedia/commons/thumb/a/aa/Claude_Monet_-_Water_Lilies_-_1906%2C_Ryerson.jpg/800px-Claude_Monet_-_Water_Lilies_-_1906%2C_Ryerson.jpg';
+// Shared empty image (use emoji fallback)
+const NO='';
+
+function a(id,title,sec,artist,year,room,img,fb,ctx){
+  return{id,title,section:sec,artist,year,room,image:img,fb,ctx};
+}
+
+const museums=[
+/* ── LOUVRE ──────────────────────────────── */
+{id:'louvre',name:'Louvre',artworks:[
+  a('joconde','La Joconde','','Léonard de Vinci','vers 1503–1519','Aile Denon · Salle 711',
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/e/ec/Mona_Lisa%2C_by_Leonardo_da_Vinci%2C_from_C2RMF_retouched.jpg/402px-Mona_Lisa%2C_by_Leonardo_da_Vinci%2C_from_C2RMF_retouched.jpg','🖼️',
+    'Portrait de Lisa Gherardini, huile sur bois de peuplier, soixante-dix-sept sur cinquante-trois centimètres. Sfumato — couches de glacis translucides. Sourire énigmatique. Plus visité au monde. Volé en mille-neuf-cent-onze, retrouvé deux ans plus tard.'),
+  a('venus','Vénus de Milo','','Sculpteur grec anonyme','vers 130–100 av. J.-C.','Aile Sully · Salle 16',
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4a/Venus_de_Milo.jpg/316px-Venus_de_Milo.jpg','🗿',
+    'Marbre de Paros, deux mètres deux. Découverte en mille-huit-cent-vingt sur l\'île de Mélos. Représente Aphrodite. Les bras manquants : pomme, miroir ou lance ? Symbole de la beauté idéale.')
+]},
+/* ── ORSAY ───────────────────────────────── */
+{id:'orsay',name:'Orsay',artworks:[
+  a('moulin','Bal du Moulin de la Galette','','Auguste Renoir','1876','Niveau 5 · Salle 32',
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/4/40/Auguste_Renoir_-_Bal_du_moulin_de_la_Galette.jpg/1280px-Auguste_Renoir_-_Bal_du_moulin_de_la_Galette.jpg','🎨',
+    'Huile sur toile, cent-trente et un sur cent-soixante-quinze centimètres. Scène à Montmartre, amis de Renoir comme modèles. Lumière filtrée à travers les feuilles — innovation impressionniste majeure.'),
+  a('nuit-rhone','La Nuit étoilée sur le Rhône','','Vincent van Gogh','1888','Niveau 5 · Salle 36',
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/9/94/Starry_Night_Over_the_Rhone.jpg/1280px-Starry_Night_Over_the_Rhone.jpg','🌟',
+    'Huile sur toile, soixante-douze sur quatre-vingt-douze centimètres. Peinte la nuit à Arles avec des bougies dans le chapeau. Lettre à Theo : le ciel est bleu profond et magnifique.')
+]},
+/* ── POMPIDOU ────────────────────────────── */
+{id:'pompidou',name:'Pompidou',artworks:[
+  a('klein','IKB 3 — Monochrome bleu','','Yves Klein','1960','Niveau 4 · Galerie 3',
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d5/Yves_Klein%2C_Untitled_Blue_Monochrome.jpg/1200px-Yves_Klein%2C_Untitled_Blue_Monochrome.jpg','🟦',
+    'Pigment pur IKB breveté, quatre-vingt-douze sur soixante-treize centimètres. L\'International Klein Blue représente l\'infini, le vide. Anthropométries : modèles enduites d\'IKB imprimant la toile.'),
+  a('matisse-roi','La Tristesse du roi','','Henri Matisse','1952','Niveau 5 · Galerie 2',
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/a/aa/Matisse%2C_La_tristesse_du_roi%2C_1952.jpg/1280px-Matisse%2C_La_tristesse_du_roi%2C_1952.jpg','✂️',
+    'Gouache sur papier découpé, deux-cent-quatre-vingt-douze sur trois-cent-quatre-vingt-six centimètres. Matisse en fauteuil roulant, ciseaux comme pinceau. Probable autoportrait face à la mort.')
+]},
+/* ── ORANGERIE ───────────────────────────── */
+{id:'orangerie',name:'Orangerie',artworks:[
+/* NYMPHÉAS SALLE 1 */
+  a('nuages','Les Nuages','Nymphéas · Salle 1','Claude Monet','1916–1926','Salle 1 · panneau nord',NL,'☁️',
+    'Panneau nord de dix-sept mètres. Ciel nuageux reflété, horizon aboli. Monet : vous entrez dans mon tableau. Peint alors que sa vue baissait, il connaissait l\'étang par cœur.'),
+  a('reflets-verts','Reflets verts','Nymphéas · Salle 1','Claude Monet','1916–1926','Salle 1 · panneau est',NL,'🌿',
+    'Dominante verte émeraude. Saules pleureurs reflétés, horizon disparu. Méditation sur la perception. Monet voulait créer une pièce de contemplation absolue.'),
+  a('soleil-couchant','Soleil couchant','Nymphéas · Salle 1','Claude Monet','1916–1926','Salle 1 · panneau ouest',NL,'🌅',
+    'Oranges et rouges incandescents, rare chaleur dans la série. Crépuscule peint depuis la passerelle japonaise de Giverny. Seize mètres de lumière mourante.'),
+  a('matin-s1','Matin','Nymphéas · Salle 1','Claude Monet','1916–1926','Salle 1 · panneau sud',NL,'🌸',
+    'Lumière fraîche de l\'aube, bleu-gris et rose pâle. Calme absolu. Monet peignait dès l\'aurore. La série dit la lumière changeante d\'un même étang selon l\'heure.'),
+/* NYMPHÉAS SALLE 2 */
+  a('reflets-arbres','Reflets d\'arbres','Nymphéas · Salle 2','Claude Monet','1916–1926','Salle 2 · panneau nord',NL,'🌳',
+    'Frondaisons de peupliers et saules dissous dans l\'eau. Le reflet aussi réel que l\'arbre. Méditation sur la frontière entre être et paraître.'),
+  a('matin-saules','Le Matin aux saules','Nymphéas · Salle 2','Claude Monet','1916–1926','Salle 2 · panneau est',NL,'🌾',
+    'Branches de saules comme des voiles sur l\'eau. Lumière blanche et diffuse. Tiges de nénuphars montant du fond invisible. Asile de méditation paisible, disait Monet.'),
+  a('deux-saules','Les Deux Saules','Nymphéas · Salle 2','Claude Monet','1916–1926','Salle 2 · panneau ouest',NL,'🍃',
+    'Deux troncs de saules encadrent la composition. Touche libre, gestuelle. Certains y voient un prélude à l\'abstraction lyrique. La plus moderne des huit toiles.'),
+  a('matin-clair','Matin clair aux saules','Nymphéas · Salle 2','Claude Monet','1916–1926','Salle 2 · panneau sud',NL,'✨',
+    'Lumière la plus éclatante du cycle. Nénuphars blancs et roses ouverts. Peint pendant la période la plus productive de Monet entre mille-neuf-cent-seize et vingt.'),
+/* MONET COLLECTION */
+  a('argenteuil','Argenteuil','Monet · Collection','Claude Monet','vers 1872–1875','Niveau -1',NO,'⛵',
+    'Huile sur toile. Scène sur la Seine à Argenteuil, village où Monet a vécu et travaillé intensément. Voiliers, reflets, ciels changeants. L\'impressionnisme en plein essor.'),
+/* CÉZANNE */
+  a('cez-pommes','Pommes et biscuits','Cézanne','Paul Cézanne','vers 1879–1882','Niveau -1 · Salle Cézanne',
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/d/df/Paul_Cezanne_-_Apples_and_Biscuits_-_Google_Art_Project.jpg/800px-Paul_Cezanne_-_Apples_and_Biscuits_-_Google_Art_Project.jpg','🍎',
+    'Nature morte fondatrice de l\'art moderne. Cézanne décompose l\'espace en plans géométriques. Ses pommes ne roulent pas — elles tiennent par la composition seule. Picasso : tout vient de Cézanne.'),
+  a('cez-rocher','Le Rocher rouge','Cézanne','Paul Cézanne','vers 1895','Niveau -1 · Salle Cézanne',
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e3/Paul_C%C3%A9zanne_-_Le_rocher_rouge_-_Mus%C3%A9e_de_l%27Orangerie.jpg/800px-Paul_C%C3%A9zanne_-_Le_rocher_rouge_-_Mus%C3%A9e_de_l%27Orangerie.jpg','🪨',
+    'Paysage de Provence, montagne Sainte-Victoire. Le rouge du rocher vibre contre le vert des pins. Cézanne cherche à rendre la permanence du minéral face à la lumière changeante.'),
+  a('cez-vase','Vase paillé, sucrier et pommes','Cézanne','Paul Cézanne','vers 1890','Niveau -1 · Salle Cézanne',NO,'🫙',
+    'Nature morte. Cézanne multiplie les points de vue simultanément — le dessus du vase vu d\'en haut, le côté vu de face. Révolution spatiale qui ouvre la voie au cubisme.'),
+  a('cez-barque','La Barque et les baigneurs','Cézanne','Paul Cézanne','vers 1890','Niveau -1 · Salle Cézanne',NO,'🚣',
+    'Composition monumentale, figures géométrisées, eau structurée en plans. Cézanne reprend le thème des baigneurs toute sa vie. Influence directe sur Matisse et Picasso.'),
+  a('cez-mme','Portrait de Madame Cézanne','Cézanne','Paul Cézanne','vers 1885–1890','Niveau -1 · Salle Cézanne',NO,'👤',
+    'Sa femme Hortense, peinte des dizaines de fois. Regard absent, présence monumentale. Cézanne traitait ses modèles comme des pommes — avec la même rigueur géométrique.'),
+  a('cez-fils','Portrait du fils de l\'artiste','Cézanne','Paul Cézanne','vers 1881–1882','Niveau -1 · Salle Cézanne',NO,'👦',
+    'Portrait de Paul fils, regard direct et lumineux. Rare tendresse dans l\'œuvre de Cézanne. La touche reste structurée, les plans visibles même dans le portrait intime.'),
+  a('cez-fruits','Fruits, serviette et boîte à lait','Cézanne','Paul Cézanne','vers 1879–1882','Niveau -1 · Salle Cézanne',NO,'🍑',
+    'Nature morte à la composition savante. La serviette froissée crée un fond rythmique. Chaque objet a son propre espace, sa propre gravité. La réalité reconstruite depuis zéro.'),
+  a('cez-fleurs1','Fleurs et fruits','Cézanne','Paul Cézanne','vers 1890','Niveau -1 · Salle Cézanne',NO,'🌷',
+    'Rare sujet floral chez Cézanne. Bouquet exubérant traité avec la même rigueur que ses natures mortes. La couleur vibre par touches séparées et juxtaposées.'),
+  a('cez-fleurs2','Fleurs dans un vase bleu','Cézanne','Paul Cézanne','vers 1873–1875','Niveau -1 · Salle Cézanne',NO,'💐',
+    'Nature morte florale de jeunesse, influence encore impressionniste. Le vase bleu contraste avec les fleurs chaudes. Déjà cette attention à la structure et aux volumes.'),
+  a('cez-chateau','Dans le parc de Château Noir','Cézanne','Paul Cézanne','vers 1900','Niveau -1 · Salle Cézanne',NO,'🌲',
+    'Paysage au bord d\'Aix-en-Provence. Les rochers et les arbres deviennent des formes géométriques enchevêtrées. Touche en petits aplats constructifs — mosaïque de sensations.'),
+  a('cez-dejeuner','Le Déjeuner sur l\'herbe','Cézanne','Paul Cézanne','vers 1876–1877','Niveau -1 · Salle Cézanne',NO,'🧺',
+    'Relecture du sujet manet-esque. Figures massives, espace compressé, perspective déstructurée. Cézanne dialogue avec la tradition tout en l\'explosant.'),
+  a('cez-poire','Nature morte, poire et pommes vertes','Cézanne','Paul Cézanne','vers 1873','Niveau -1 · Salle Cézanne',NO,'🍐',
+    'Petite nature morte d\'une intensité concentrée. Chaque fruit posé comme un acteur sur une scène. Le fond beige amplifie les verts et les jaunes. Économie maximale.'),
+  a('cez-pin','Paysage au toit rouge ou Le Pin à l\'Estaque','Cézanne','Paul Cézanne','vers 1875–1876','Niveau -1 · Salle Cézanne',NO,'🏡',
+    'Village de l\'Estaque, près de Marseille. Le toit rouge punctue la verdure compacte. Cézanne y passait l\'été loin de Paris. Paysage construit comme une architecture.'),
+  a('cez-arbres','Arbres et maisons','Cézanne','Paul Cézanne','vers 1900–1904','Niveau -1 · Salle Cézanne',NO,'🌳',
+    'L\'un de ses derniers paysages. Arbres et façades se confondent en taches colorées. La frontière entre nature et architecture s\'efface. Presque abstrait.'),
+  a('cez-madame','Madame Cézanne au jardin','Cézanne','Paul Cézanne','vers 1879–1882','Niveau -1 · Salle Cézanne',NO,'🌸',
+    'Portrait en extérieur, jardin comme décor structuré. Hortense statique, absorbée. L\'environnement aussi construit que le visage. Unité formelle totale.'),
+/* RENOIR */
+  a('ren-clown','Claude Renoir en clown','Renoir','Auguste Renoir','1909','Niveau -1 · Salle Renoir',
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/Renoir_-_Claude_Renoir_en_clown_%28vers_1909%29.jpg/800px-Renoir_-_Claude_Renoir_en_clown_%28vers_1909%29.jpg','🤡',
+    'Portrait du fils Claude dit Coco en clown. Renoir peignait les mains déformées par l\'arthrite, pinceaux attachés. Ce portrait rayonne de tendresse malgré la souffrance.'),
+  a('ren-piano','Yvonne et Christine Lerolle au piano','Renoir','Auguste Renoir','1897–1898','Niveau -1 · Salle Renoir',
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8e/Renoir_-_Yvonne_et_Christine_Lerolle_au_piano_%281897-98%29.jpg/800px-Renoir_-_Yvonne_et_Christine_Lerolle_au_piano_%281897-98%29.jpg','🎹',
+    'Deux jeunes femmes chez le peintre Lerolle. Deux tableaux de Degas visibles au mur. Lumière sur les robes blanches. Témoignage de la vie artistique bourgeoise de la fin du siècle.'),
+  a('ren-gabrielle','Gabrielle et Jean','Renoir','Auguste Renoir','1895–1896','Niveau -1 · Salle Renoir',NO,'👶',
+    'La nourrice Gabrielle Renard avec le fils Jean, futur cinéaste. Tendresse maternelle, lumière dorée. Renoir peint le bonheur domestique avec une sensualité tranquille.'),
+  a('ren-nue-paysage','Femme nue dans un paysage','Renoir','Auguste Renoir','vers 1883','Niveau -1 · Salle Renoir',NO,'🌿',
+    'Nu féminin en plein air, peau nacrée contre la verdure. Renoir cherche à intégrer la figure humaine à la lumière naturelle. Corps et nature en osmose totale.'),
+  a('ren-nue-couchee','Femme nue couchée — Gabrielle','Renoir','Auguste Renoir','vers 1906','Niveau -1 · Salle Renoir',NO,'🛋️',
+    'Gabrielle allongée, carnation chaude, poses sensuelles. Le modèle préféré de Renoir jusqu\'à la fin. Matière picturale crémeuse et lumineuse, signature de ses nus tardifs.'),
+  a('ren-fillettes','Portrait de deux fillettes','Renoir','Auguste Renoir','vers 1890–1892','Niveau -1 · Salle Renoir',NO,'👧',
+    'Deux enfants côte à côte, regards directs et candides. Touches libres, couleurs fraîches. Renoir excelle à saisir la grâce de l\'enfance sans sentimentalisme excessif.'),
+  a('ren-piano2','Jeunes filles au piano','Renoir','Auguste Renoir','1892','Niveau -1 · Salle Renoir',NO,'🎵',
+    'Sujet peint plusieurs fois à la demande de l\'État. Lumière tamisée dans l\'intérieur bourgeois. Renoir cherchait un style plus classique à cette époque.'),
+  a('ren-baigneuse1','Baigneuse aux cheveux longs','Renoir','Auguste Renoir','vers 1895','Niveau -1 · Salle Renoir',NO,'💆',
+    'Figure monumentale, cheveux dénoués, peau dorée. Renoir s\'inspire des grandes baigneuses de Raphaël et Rubens. Le corps féminin traité comme un paysage.'),
+  a('ren-bouquet','Bouquet','Renoir','Auguste Renoir','vers 1900','Niveau -1 · Salle Renoir',NO,'🌸',
+    'Fleurs dans un vase, explosion de roses et pivoines. Renoir peignait les fleurs comme les femmes — avec appétit et tendresse. La couleur déborde presque du cadre.'),
+  a('ren-fraises','Fraises','Renoir','Auguste Renoir','vers 1905','Niveau -1 · Salle Renoir',NO,'🍓',
+    'Petite nature morte sensuelle. Les fraises rouges sur une nappe blanche. Renoir peignait la nourriture comme il peignait la peau — avec une envie tactile évidente.'),
+  a('ren-tulipes','Bouquet de tulipes','Renoir','Auguste Renoir','vers 1905','Niveau -1 · Salle Renoir',NO,'🌷',
+    'Tulipes aux couleurs vives, touche large et généreuse. Renoir continue à peindre malgré l\'arthrite invalidante. La joie de peindre est intacte jusqu\'au bout.'),
+  a('ren-chapeau','Femme au chapeau','Renoir','Auguste Renoir','vers 1910','Niveau -1 · Salle Renoir',NO,'👒',
+    'Portrait féminin tardif, touche libre et fondue. Le chapeau encadre un visage lumineux et rêveur. Renoir à Cagnes-sur-Mer, lumière méditerranéenne, corps alanguis.'),
+  a('ren-rose','Blonde à la rose','Renoir','Auguste Renoir','vers 1915–1917','Niveau -1 · Salle Renoir',NO,'🌹',
+    'L\'un de ses derniers portraits. Femme blonde, rose dans les cheveux, regard lointain. La touche se fragmentait mais la chaleur restait intacte jusqu\'à la mort de Renoir.'),
+  a('ren-baigneuse2','Baigneuse assise s\'essuyant une jambe','Renoir','Auguste Renoir','vers 1914','Niveau -1 · Salle Renoir',NO,'🏊',
+    'Nu monumental à l\'antique. Corps sculptural, touche grassement appliquée. Renoir réalise ses plus grandes baigneuses en fin de vie, paralysé mais triomphant.'),
+  a('ren-lettre','Femme à la lettre','Renoir','Auguste Renoir','vers 1895','Niveau -1 · Salle Renoir',NO,'✉️',
+    'Femme en intérieur, absorbée dans sa lecture. Lumière tamisée, robe claire. Scène intime et silencieuse, dans la tradition des intérieurs hollandais revisités.'),
+  a('ren-accoudee','Femme accoudée','Renoir','Auguste Renoir','vers 1915','Niveau -1 · Salle Renoir',NO,'💭',
+    'Femme pensive, bras appuyé sur une table. Regard tourné vers l\'intérieur. L\'un des formats intimes de Renoir, où la psychologie effleure la surface picturale.'),
+  a('ren-gabrielle2','Gabrielle au jardin','Renoir','Auguste Renoir','vers 1900','Niveau -1 · Salle Renoir',NO,'🌻',
+    'Gabrielle dans le jardin de Renoir à Essoyes. Lumière filtrée, végétation exubérante. Renoir intègre le modèle au décor comme un élément naturel parmi d\'autres.'),
+  a('ren-pommes','Pommes et poires','Renoir','Auguste Renoir','vers 1890','Niveau -1 · Salle Renoir',NO,'🍏',
+    'Nature morte lumineuse, fruits ronds et brillants. Renoir peint rarement les natures mortes mais y apporte la même touche sensuelle que dans ses figures.'),
+  a('ren-neige','Paysage de neige','Renoir','Auguste Renoir','vers 1870','Niveau -1 · Salle Renoir',NO,'❄️',
+    'Rare paysage hivernal chez Renoir. Neige en touches bleues et blanches, lumière froide. Influence de Monet et Sisley dans l\'exploration des effets de neige.'),
+  a('ren-peches','Pêches','Renoir','Auguste Renoir','vers 1881','Niveau -1 · Salle Renoir',NO,'🍑',
+    'Nature morte intimiste, pêches dorées sur une nappe blanche. La peau veloutée du fruit évoque la peau humaine — analogie chère à Renoir tout au long de sa carrière.'),
+  a('ren-claude-jouant','Claude Renoir, jouant','Renoir','Auguste Renoir','vers 1905','Niveau -1 · Salle Renoir',NO,'🧒',
+    'Le fils Claude en train de jouer, absorbé et naturel. Renoir détestait les poses figées pour les enfants. Cette spontanéité capturée est sa marque dans les portraits d\'enfants.'),
+  a('ren-loge','Bouquet dans une loge','Renoir','Auguste Renoir','vers 1880','Niveau -1 · Salle Renoir',NO,'🌺',
+    'Fleurs en intérieur de théâtre, velours rouge et dorures. Le bouquet comme prétexte à explorer la lumière artificielle des soirées mondaines.'),
+  a('ren-violon','Portrait d\'un jeune homme et d\'une fille','Renoir','Auguste Renoir','vers 1895','Niveau -1 · Salle Renoir',NO,'👫',
+    'Double portrait, complicité et lumière. Renoir excelle à saisir la relation entre deux personnes sans jamais verser dans l\'anecdote.'),
+/* ROUSSEAU */
+  a('rousseau-noce','La Noce','Rousseau','Henri Rousseau','1904–1905','Niveau -1 · Salle Rousseau',
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3c/Henri_Rousseau_-_La_Noce_-_Google_Art_Project.jpg/800px-Henri_Rousseau_-_La_Noce_-_Google_Art_Project.jpg','💐',
+    'Cortège nuptial dans une forêt. Douanier Rousseau, autodidacte, adulé par Picasso. Chaque personnage posé, immobile, légèrement irréel. Scène ordinaire rendue étrange et éternelle.'),
+  a('rousseau-carriole','La Carriole du Père Junier','Rousseau','Henri Rousseau','1908','Niveau -1 · Salle Rousseau',
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e3/Henri_Julien_F%C3%A9lix_Rousseau_-_La_carriole_du_p%C3%A8re_Junier.jpg/800px-Henri_Julien_F%C3%A9lix_Rousseau_-_La_carriole_du_p%C3%A8re_Junier.jpg','🐎',
+    'Père Junier avec famille et cheval dans une rue de Paris. Rousseau s\'est inclus à gauche. Chaque personnage nous regarde fixement. Solennité monumentale d\'une scène ordinaire.'),
+  a('rousseau-enfant','L\'Enfant à la poupée','Rousseau','Henri Rousseau','vers 1904–1905','Niveau -1 · Salle Rousseau',NO,'🪆',
+    'Portrait d\'enfant avec poupée, regard direct et grave. Rousseau ne savait pas la perspective académique — et c\'est ce qui lui donne cette puissance frontale et atemporelle.'),
+  a('rousseau-falaise','La Falaise','Rousseau','Henri Rousseau','vers 1895','Niveau -1 · Salle Rousseau',NO,'🏔️',
+    'Paysage côtier aux tons plats et lumineux. Mer et ciel traités comme des aplats. La naïveté apparente cache une maîtrise intuitive des contrastes et des rythmes.'),
+  a('rousseau-fabrique1','La Fabrique de chaises','Rousseau','Henri Rousseau','vers 1897','Niveau -1 · Salle Rousseau',NO,'🏭',
+    'Scène industrielle de banlieue parisienne. Rousseau peint son époque — l\'usine, la périphérie, le monde ouvrier — avec la même solennité naïve que ses scènes exotiques.'),
+  a('rousseau-fabrique2','La Fabrique de chaises à Alfortville','Rousseau','Henri Rousseau','vers 1900','Niveau -1 · Salle Rousseau',NO,'🏗️',
+    'Vue de la banlieue sud de Paris. Cheminées et bâtiments industriels peints avec une précision presque photographique mais une palette irréelle.'),
+  a('rousseau-navire','Le Navire dans la tempête','Rousseau','Henri Rousseau','vers 1899','Niveau -1 · Salle Rousseau',NO,'⛵',
+    'Scène maritime dramatique, vagues stylisées, ciel tourmenté. Rousseau n\'a jamais voyagé mais rêvait de lointain. La mer est imaginée — ce qui la rend encore plus intense.'),
+  a('rousseau-promeneurs','Promeneurs dans un parc','Rousseau','Henri Rousseau','vers 1908','Niveau -1 · Salle Rousseau',NO,'🌳',
+    'Scène dominicale au parc, personnages figés parmi les arbres. Le parc comme scène de théâtre. Chaque arbre peint feuille par feuille avec une patience méditative.'),
+  a('rousseau-pecheurs','Les Pêcheurs à la ligne','Rousseau','Henri Rousseau','vers 1908–1909','Niveau -1 · Salle Rousseau',NO,'🎣',
+    'Bord de rivière, pêcheurs immobiles, reflets dans l\'eau. Scène de loisir populaire traitée avec la même frontalité que les paysages exotiques.'),
+  a('rousseau-portrait-h','Portrait d\'homme','Rousseau','Henri Rousseau','vers 1905','Niveau -1 · Salle Rousseau',NO,'👨',
+    'Portrait frontal, regard direct, costume soigné. Rousseau portraiturait ses voisins et ses amis avec la même gravité que les grands maîtres portraitistes.'),
+  a('rousseau-portrait-f','Portrait de femme','Rousseau','Henri Rousseau','vers 1895–1897','Niveau -1 · Salle Rousseau',NO,'👩',
+    'Portrait féminin, fond de paysage, présence solennelle. La femme regarde droit devant elle, dignité absolue. Rousseau hissait ses modèles à la hauteur de l\'icône.'),
+/* GAUGUIN */
+  a('gauguin-paysage','Paysage','Gauguin · Sisley · Van Dongen','Paul Gauguin','vers 1875','Niveau -1',NO,'🌴',
+    'Paysage de jeunesse, avant le départ de Gauguin pour la Bretagne puis la Polynésie. Influence impressionniste. Déjà une palette plus saturée, une touche plus construite.'),
+/* SISLEY */
+  a('sisley-montbuisson','Le Chemin de Montbuisson à Louveciennes','Gauguin · Sisley · Van Dongen','Alfred Sisley','vers 1873','Niveau -1',NO,'🛤️',
+    'Route de campagne à Louveciennes, village des impressionnistes. Sisley, le plus discret du groupe, excelle dans les ciels changeants et les perspectives fuyantes.'),
+/* VAN DONGEN */
+  a('vandongen-guillaume','Portrait de Paul Guillaume','Gauguin · Sisley · Van Dongen','Kees van Dongen','vers 1920','Niveau -1',NO,'🎩',
+    'Portrait du galeriste Paul Guillaume par le peintre fauve hollandais. Van Dongen, maître du portrait mondain à Paris dans les années vingt, capte l\'élégance et la sophistication de son mécène.'),
+/* MATISSE */
+  a('matisse-rouge','Odalisque à la culotte rouge','Matisse','Henri Matisse','1924–1925','Niveau -1 · Salle Matisse',
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e3/Matisse_-_Odalisque_-_Mus%C3%A9e_de_l%27Orangerie.jpg/800px-Matisse_-_Odalisque_-_Mus%C3%A9e_de_l%27Orangerie.jpg','🌺',
+    'Femme allongée dans un intérieur orientalisant à Nice. Après la Grande Guerre, Matisse cherche la sérénité et la couleur pure. Le rouge et le blanc vibrent ensemble.'),
+  a('matisse-grise','Odalisque à la culotte grise','Matisse','Henri Matisse','1926–1927','Niveau -1 · Salle Matisse',NO,'🌸',
+    'Seconde odalisque, même décor niçois, palette plus froide. Matisse explore les variations d\'une même composition. La lumière méditerranéenne et les tissus orientaux.'),
+  a('matisse-trois','Les Trois Sœurs','Matisse','Henri Matisse','vers 1916–1917','Niveau -1 · Salle Matisse',NO,'👩‍👩‍👧',
+    'Triptyque de trois jeunes femmes en intérieur. Les personnages deviennent des éléments architecturaux. Couleurs en aplats, décor réduit à l\'essentiel.'),
+  a('matisse-jeune','La Jeune Fille et le vase de fleurs ou Le Nu rose','Matisse','Henri Matisse','vers 1919–1921','Niveau -1 · Salle Matisse',NO,'🌷',
+    'Nu rose dans un intérieur lumineux. Matisse simplifie les formes jusqu\'à l\'épure. La couleur rose du corps vibre contre les tons bleus et verts du fond.'),
+  a('matisse-violon','Femme au violon','Matisse','Henri Matisse','1921–1923','Niveau -1 · Salle Matisse',NO,'🎻',
+    'Femme avec violon devant une fenêtre. La lumière extérieure contre-jour, les rideaux, les tissus. Matisse construit une harmonie entre figure et espace intérieur.'),
+  a('matisse-bleue','Odalisque bleue ou l\'Esclave blanche','Matisse','Henri Matisse','vers 1926','Niveau -1 · Salle Matisse',NO,'💙',
+    'Odalisque en bleu intense — couleur rare et forte. Le fond décoratif est aussi travaillé que la figure. Matisse peint des univers entiers dans chaque tableau.'),
+  a('matisse-boudoir','Le Boudoir','Matisse','Henri Matisse','vers 1921','Niveau -1 · Salle Matisse',NO,'🪞',
+    'Intérieur féminin à Nice, miroir, lumière filtrée. Matisse aime les intérieurs comme scènes de théâtre. La fenêtre est une obsession — interface entre l\'espace intime et le monde.'),
+  a('matisse-divan','Femmes au canapé ou Le Divan','Matisse','Henri Matisse','1920–1921','Niveau -1 · Salle Matisse',NO,'🛋️',
+    'Deux femmes sur un canapé dans un intérieur niçois. Tissus, motifs, couleurs en cascade. Le canapé disparaît sous les impressions textiles.'),
+  a('matisse-mandoline','Femme à la mandoline','Matisse','Henri Matisse','1922','Niveau -1 · Salle Matisse',NO,'🪕',
+    'Femme tenant une mandoline, intérieur décoratif. La musique est un thème récurrent chez Matisse — art de la vibration, comme la couleur. Les deux se répondent.'),
+  a('matisse-nu','Nu drapé étendu','Matisse','Henri Matisse','vers 1923–1924','Niveau -1 · Salle Matisse',NO,'🌿',
+    'Nu allongé enveloppé de tissu. Lignes fluides, drapé en mouvement. Matisse dessine le corps et l\'étoffe avec le même geste continu et souple.'),
+/* PICASSO */
+  a('picasso-baigneuse','Grande baigneuse','Picasso','Pablo Picasso','1921','Niveau -1 · Salle Picasso',NO,'🏊',
+    'Corps monumental à l\'antique, période néoclassique de Picasso. Musculature exagérée, solidité intemporelle. Picasso dialogue avec la sculpture grecque et la grandeur antique.'),
+  a('picasso-etreinte','L\'Étreinte','Picasso','Pablo Picasso','1903','Niveau -1 · Salle Picasso',NO,'🤝',
+    'Période bleue, deux corps fusionnant. Peint à vingt-deux ans après le suicide de son ami Casagemas. Teintes froides, mélancolie profonde, tendresse désespérée.'),
+  a('picasso-ados','Les Adolescents','Picasso','Pablo Picasso','1906','Niveau -1 · Salle Picasso',NO,'👨‍👦',
+    'Deux figures nues de face, entre périodes rose et africaine. Les corps s\'aplatissent, les volumes se simplifient. La préparation silencieuse aux Demoiselles d\'Avignon.'),
+  a('picasso-peigne','Femme au peigne','Picasso','Pablo Picasso','1906','Niveau -1 · Salle Picasso',NO,'💆',
+    'Figure féminine se coiffant, formes simplifiées, influence ibérique. Picasso abandonne la douceur de la période rose pour une forme plus primaire et directe.'),
+  a('picasso-paysans','Composition : paysans','Picasso','Pablo Picasso','1906','Niveau -1 · Salle Picasso',NO,'👨‍🌾',
+    'Figures de paysans robustes, volumes massifs, palette ocre. L\'influence espagnole est forte. Corps traités comme des blocs sculptés plutôt que comme des êtres de chair.'),
+  a('picasso-nature','Grande nature morte','Picasso','Pablo Picasso','1917','Niveau -1 · Salle Picasso',NO,'🍎',
+    'Nature morte monumentale, cubisme à son apogée. Les objets éclatent en facettes simultanées. Une table de café devient une architecture de plans colorés.'),
+  a('picasso-nu-rouge','Nu sur fond rouge','Picasso','Pablo Picasso','1906','Niveau -1 · Salle Picasso',NO,'❤️',
+    'Figure nue sur fond rouge intense. Formes archaïques, frontalité absolue. Picasso regarde vers les sculptures ibériques et africaines pour briser le moule européen.'),
+  a('picasso-draperie','Grand nu à la draperie','Picasso','Pablo Picasso','1923','Niveau -1 · Salle Picasso',NO,'🌊',
+    'Période néoclassique, nu monumental enveloppé d\'un tissu. Lignes classiques mais proportions anormales. Picasso joue avec la tradition tout en la déformant.'),
+  a('picasso-blanc','Femme au chapeau blanc','Picasso','Pablo Picasso','1921','Niveau -1 · Salle Picasso',NO,'👒',
+    'Portrait de femme au chapeau blanc, visage calme et grave. Période néoclassique sereine. Lignes pures, dignité antique, palette claire.'),
+  a('picasso-fontaine1','Femmes à la fontaine','Picasso','Pablo Picasso','1921','Niveau -1 · Salle Picasso',NO,'⛲',
+    'Figures monumentales à la source — référence aux frises antiques. Corps de cariatides, gestes lents et rituels. Picasso réinvente le classicisme depuis l\'intérieur.'),
+  a('picasso-tambourin','Femme au tambourin','Picasso','Pablo Picasso','1925','Niveau -1 · Salle Picasso',NO,'🪘',
+    'Début de la période surréaliste. Corps déformé, bras distendus, énergie du mouvement. Picasso passe de la sérénité classique à l\'expressivité violente.'),
+/* MODIGLIANI */
+  a('modi-guillaumeNP','Paul Guillaume, Novo Pilota','Modigliani','Amedeo Modigliani','1915','Niveau -1 · Salle Modigliani',
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/2/26/Modigliani_-_Paul_Guillaume_%28Novo_Pilota%29.jpg/800px-Modigliani_-_Paul_Guillaume_%28Novo_Pilota%29.jpg','🎩',
+    'Galeriste mécène, inscription Novo Pilota : nouveau pilote de l\'art moderne. Cou allongé, yeux en amande — signature de Modigliani. Portrait d\'un homme qui croyait en lui.'),
+  a('modi-antonia','Antonia','Modigliani','Amedeo Modigliani','vers 1915','Niveau -1 · Salle Modigliani',
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c2/Modigliani_-_Antonia.jpg/800px-Modigliani_-_Antonia.jpg','👤',
+    'Yeux sans pupilles — l\'intériorité, l\'âme qui se dérobe. Modigliani vivait dans la misère et la tuberculose. Mais des chefs-d\'œuvre à un rythme effréné.'),
+  a('modi-apprenti','Le Jeune Apprenti','Modigliani','Amedeo Modigliani','vers 1918–1919','Niveau -1 · Salle Modigliani',NO,'👦',
+    'Jeune homme en veste bleue, cou étrangement long, regard vide. Modigliani peignait les gens humbles avec la même noblesse que les aristocrates. Dignité universelle.'),
+  a('modi-portrait','Portrait de Paul Guillaume à mi-cuisse','Modigliani','Amedeo Modigliani','1916','Niveau -1 · Salle Modigliani',NO,'🕴️',
+    'Second portrait de Guillaume, plus monumental. Le mécène vu en majesté — comme un seigneur de la Renaissance. Modigliani lui devait beaucoup et le lui rendait en gloire picturale.'),
+  a('modi-velours','Femme au ruban de velours','Modigliani','Amedeo Modigliani','vers 1915','Niveau -1 · Salle Modigliani',NO,'🎀',
+    'Portrait féminin, ruban au cou, fond neutre. La simplicité du fond intensifie la présence du visage allongé. Le ruban crée une ligne qui accentue l\'étirement du cou.'),
+  a('modi-rousse','Fille rousse','Modigliani','Amedeo Modigliani','vers 1918','Niveau -1 · Salle Modigliani',NO,'👩‍🦰',
+    'Jeune femme rousse, yeux mi-clos, résignation douce. Modigliani mourra en mille-neuf-cent-vingt à trente-cinq ans. Ces portraits de femmes anonymes comptent parmi ses plus intenses.'),
+/* LAURENCIN */
+  a('laur-chanel','Portrait de Mademoiselle Chanel','Laurencin','Marie Laurencin','1923','Niveau -1 · Salle Laurencin',
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d0/Marie_Laurencin_-_Portrait_de_Mademoiselle_Chanel.jpg/800px-Marie_Laurencin_-_Portrait_de_Mademoiselle_Chanel.jpg','💄',
+    'Commandé par Chanel qui a refusé le tableau : trop mélancolique. Paul Guillaume l\'a racheté. Portrait d\'une des plus grandes femmes du siècle par une des rares peintres reconnues.'),
+  a('laur-apollinaire','Portrait de Guillaume Apollinaire','Laurencin','Marie Laurencin','vers 1908–1909','Niveau -1 · Salle Laurencin',NO,'✍️',
+    'Le poète Apollinaire, ami et amant de Laurencin. Figures poétiques et vaporeuses, entre rêve et réel. Laurencin invente un monde pastel habité par des femmes gracieuses.'),
+  a('laur-espagnoles','Danseuses espagnoles','Laurencin','Marie Laurencin','vers 1915','Niveau -1 · Salle Laurencin',NO,'💃',
+    'Figures féminines en mouvement, voiles et couleurs froides. Laurencin peint un univers exclusivement féminin, mystérieux et lointain. La danse comme état de grâce.'),
+  a('laur-biches','Les Biches','Laurencin','Marie Laurencin','1923','Niveau -1 · Salle Laurencin',NO,'🦌',
+    'Titre des Ballets russes de Diaghilev pour lesquels Laurencin a travaillé. Femmes et biches entremêlées, monde de grâce et de fragilité. Pastel, ouate, irréalité douce.'),
+  a('laur-chien','Femmes au chien','Laurencin','Marie Laurencin','vers 1922','Niveau -1 · Salle Laurencin',NO,'🐕',
+    'Groupe féminin avec un chien, couleurs douces et bleutées. Univers clos et protégé. Laurencin ne peignait presque jamais d\'hommes — un monde à part entière.'),
+  a('laur-mme-paul','Portrait de Madame Paul Guillaume','Laurencin','Marie Laurencin','vers 1924–1928','Niveau -1 · Salle Laurencin',NO,'👩',
+    'La femme du galeriste, commanditaire de la collection. Regard doux et élégance, palette caractéristique de rose et bleu pâle. La vie mondaine des années folles vue par Laurencin.'),
+/* DERAIN */
+  a('derain-arlequin','Arlequin et Pierrot','Derain','André Derain','1924','Niveau -1 · Salle Derain',
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d5/Derain_-_Arlequin_et_Pierrot.jpg/800px-Derain_-_Arlequin_et_Pierrot.jpg','🎭',
+    'Deux figures de la Commedia dell\'arte. Derain quitte le fauvisme pour un classicisme intemporel. Dialogue entre la mélancolie du Pierrot pâle et la légèreté de l\'Arlequin.'),
+  a('derain-beau','Le Beau Modèle','Derain','André Derain','vers 1923','Niveau -1 · Salle Derain',NO,'🎨',
+    'Nu féminin dans l\'atelier, lumière froide, posture classique. Derain revient à la tradition des nus en atelier après ses années fauves et cubisantes.'),
+  a('derain-portrait-paul','Portrait de Paul Guillaume','Derain','André Derain','vers 1919','Niveau -1 · Salle Derain',NO,'🕴️',
+    'Le galeriste vu par Derain avec sobriété et puissance. Fond neutre, costume sombre, regard direct. Portrait de représentation au sens classique du terme.'),
+  a('derain-mme-paul','Portrait de Madame Paul Guillaume au grand chapeau','Derain','André Derain','vers 1928–1929','Niveau -1 · Salle Derain',NO,'👒',
+    'La femme du galeriste sous un grand chapeau, élégance des années folles. Derain excelle dans les portraits mondains où la mode devient architecture du tableau.'),
+  a('derain-poires','Poires et cruche','Derain','André Derain','vers 1912','Niveau -1 · Salle Derain',NO,'🍐',
+    'Nature morte post-cubiste, volumes simplifiés. Derain dialogue avec Cézanne et le cubisme tout en cherchant son propre équilibre entre modernité et tradition.'),
+  a('derain-verre','Nature morte au verre de vin','Derain','André Derain','vers 1910–1911','Niveau -1 · Salle Derain',NO,'🍷',
+    'Nature morte à la table servie. Derain joue avec les plans inclinés et les volumes éclatés. Influence cubiste tempérée par un sens naturel de la couleur.'),
+  a('derain-nu-canape','Nu au canapé','Derain','André Derain','vers 1921','Niveau -1 · Salle Derain',NO,'🛋️',
+    'Nu allongé dans un intérieur, formes rondes, palette terreuse. Derain puise dans Ingres et les maîtres anciens pour retrouver une plénitude classique.'),
+  a('derain-arbre','Le Gros Arbre','Derain','André Derain','vers 1919','Niveau -1 · Salle Derain',NO,'🌳',
+    'Arbre monumental dans un paysage, tronc puissant, feuillage dense. Derain cherche dans la nature une permanence que l\'avant-garde agitée lui semblait nier.'),
+  a('derain-table','La Table de cuisine','Derain','André Derain','vers 1921','Niveau -1 · Salle Derain',NO,'🫕',
+    'Nature morte de cuisine, légumes et ustensiles posés avec simplicité. Derain peint le quotidien avec l\'attention d\'un maître flamand du XVII siècle.'),
+  a('derain-arlequin2','Arlequin à la guitare','Derain','André Derain','vers 1924–1925','Niveau -1 · Salle Derain',NO,'🎸',
+    'Seconde variation sur le thème de l\'Arlequin, ici musicien. Personnage de carnaval devenu emblème du désespoir élégant. Picasso et Derain ont partagé cette fascination.'),
+  a('derain-blond','Le Modèle blond','Derain','André Derain','vers 1923','Niveau -1 · Salle Derain',NO,'💆',
+    'Nu féminin blond, lumière douce d\'atelier. Derain construit ses nus avec la solidité d\'un sculpteur. La peinture comme moyen de saisir le volume et la pesanteur du corps.'),
+  a('derain-cruche','Nu à la cruche','Derain','André Derain','vers 1923–1924','Niveau -1 · Salle Derain',NO,'🏺',
+    'Nu tenant une cruche, référence à l\'Antiquité. L\'objet transforme la figure nue en allégorie. Derain joue avec les codes iconographiques classiques.'),
+  a('derain-sonia','La Danseuse Sonia','Derain','André Derain','vers 1903','Niveau -1 · Salle Derain',NO,'💃',
+    'Portrait de danseuse, période fauve naissante. Couleurs expressives et touche nerveuse. Avant le retour au classicisme, Derain brûlait d\'une énergie colorée intense.'),
+  a('derain-grand-nu','Grand nu couché','Derain','André Derain','vers 1921–1922','Niveau -1 · Salle Derain',NO,'🌅',
+    'Nu monumental allongé, format grand, présence sculpturale. Derain dans sa pleine maturité classique. Le corps féminin comme forme intemporelle.'),
+  a('derain-nature-panier','Nature morte au panier','Derain','André Derain','vers 1921','Niveau -1 · Salle Derain',NO,'🧺',
+    'Nature morte au panier d\'osier, fruits et légumes posés. Derain aime les objets simples traités avec une attention presque liturgique.'),
+  a('derain-melon','Melon et fruits','Derain','André Derain','vers 1921','Niveau -1 · Salle Derain',NO,'🍈',
+    'Nature morte estivale, melon coupé révélant la chair orangée. Contrastes de couleurs vives sur fond sobre. Jouissance sensorielle assumée.'),
+  a('derain-provence1','Paysage de Provence','Derain','André Derain','vers 1924–1925','Niveau -1 · Salle Derain',NO,'🌿',
+    'Garrigue et ocres de Provence, pins et rochers. Derain séjourne dans le sud de la France pour retrouver une lumière méditerranéenne qui nourrit son classicisme.'),
+  a('derain-grand-morin','Le Grand Morin ou Le Paysage dans le goût italien','Derain','André Derain','vers 1905','Niveau -1 · Salle Derain',NO,'🏞️',
+    'Rivière française avec une lumière presque toscane. Derain s\'inspire des paysagistes italiens de la Renaissance. La nature française vue à travers l\'Italie.'),
+  a('derain-gibeciere','La Gibecière','Derain','André Derain','vers 1913','Niveau -1 · Salle Derain',NO,'👜',
+    'Homme à la besace, silhouette massive et sobre. Période de transition entre le fauisme et le classicisme. Le personnage peint avec la densité d\'une statue.'),
+  a('derain-mandoline','Le Joueur de mandoline','Derain','André Derain','vers 1910','Niveau -1 · Salle Derain',NO,'🪕',
+    'Musicien populaire, traitement cubisant. Derain dialogue avec Picasso et Braque sur ce thème de la musique populaire. Hommage à la modernité avant de s\'en détourner.'),
+  a('derain-niece1','La Nièce du peintre assise','Derain','André Derain','vers 1931','Niveau -1 · Salle Derain',NO,'🪑',
+    'Portrait de la nièce dans un intérieur bourgeois. Derain dans ses portraits tardifs retrouve une intimité et une tendresse qu\'on lui reprochait de cacher.'),
+  a('derain-niece2','La Nièce du peintre','Derain','André Derain','vers 1931','Niveau -1 · Salle Derain',NO,'👧',
+    'Second portrait de la nièce, composition plus serrée. Jeunesse et grâce saisies avec les outils d\'un peintre classique accompli.'),
+  a('derain-roses','Roses dans un vase','Derain','André Derain','vers 1932','Niveau -1 · Salle Derain',NO,'🌹',
+    'Bouquet de roses rouges, fond sombre. Derain dans ses natures mortes florales tardives retrouve quelque chose de la peinture espagnole — Zurbarán, Velázquez.'),
+  a('derain-provence2','Paysage du Midi','Derain','André Derain','vers 1930','Niveau -1 · Salle Derain',NO,'☀️',
+    'Paysage méditerranéen lumineux, masses d\'arbres et ciel blanc. Derain vieillissant cherche une synthèse entre l\'énergie de ses débuts et la sérénité de la tradition.'),
+  a('derain-village','Arbres et village','Derain','André Derain','vers 1912','Niveau -1 · Salle Derain',NO,'🏘️',
+    'Village enchâssé dans la végétation, toits rouges et murs blancs. Derain joue avec les plans et les volumes dans une géographie simplifiée et lumineuse.'),
+  a('derain-route','La Route','Derain','André Derain','vers 1928','Niveau -1 · Salle Derain',NO,'🛤️',
+    'Route campagnarde fuyant vers l\'horizon. Perspective classique, tons terrestres. Derain revisite le paysage du XVII siècle européen dans un esprit intemporel.'),
+  a('derain-roses-noir','Roses sur fond noir','Derain','André Derain','vers 1933','Niveau -1 · Salle Derain',NO,'🖤',
+    'Roses blanches et roses sur fond noir intense. Contraste dramatique, lumière caravagesque. Derain finit par s\'aventurer dans un clair-obscur presque baroque.'),
+  a('derain-champetre','Nature morte champêtre','Derain','André Derain','vers 1904','Niveau -1 · Salle Derain',NO,'🌾',
+    'Nature morte à l\'extérieur, lumière fauve et vibrante. Une des premières grandes natures mortes de Derain. Couleur explosive, touche large, joie de peindre évidente.'),
+  a('derain-exlibris','Ex-libris pour Paul Guillaume','Derain','André Derain','1920','Niveau -1 · Salle Derain',NO,'📚',
+    'Dessin gravé pour le galeriste, art graphique. Derain était aussi dessinateur et graveur. L\'ex-libris comme cadeau personnel entre artiste et mécène.'),
+/* SOUTINE */
+  a('soutine-patissier','Le Petit Pâtissier','Soutine','Chaïm Soutine','vers 1922–1923','Niveau -1 · Salle Soutine',
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1b/Chaim_Soutine_-_Le_Petit_P%C3%A2tissier.jpg/800px-Chaim_Soutine_-_Le_Petit_P%C3%A2tissier.jpg','🍰',
+    'Jeune apprenti de guingois, uniforme blanc. Soutine déformait pour exprimer l\'angoisse intérieure. Né en Lituanie, miséreux à Montparnasse. Matière épaisse et torturée.'),
+  a('soutine-village','Le Village','Soutine','Chaïm Soutine','vers 1920–1921','Niveau -1 · Salle Soutine',NO,'🏘️',
+    'Village en spirale, maisons basculant dans tous les sens. Le monde de Soutine est en permanente convulsion. Cézanne déconstruit, Van Gogh poussé à l\'extrême.'),
+  a('soutine-fiancee','La Fiancée','Soutine','Chaïm Soutine','vers 1923','Niveau -1 · Salle Soutine',NO,'👰',
+    'Jeune femme en robe de fête, rouge et blanc. Mais le bonheur chez Soutine est toujours inquiet — le sujet souriant dans une peinture qui tremble.'),
+  a('soutine-dindon','Dindon et tomates','Soutine','Chaïm Soutine','vers 1924','Niveau -1 · Salle Soutine',NO,'🦃',
+    'Nature morte d\'animaux morts — thème obsessionnel. Soutine achetait des carcasses et les laissait pourrir pour les peindre. Scandale et fascination.'),
+  a('soutine-lapin','Le Lapin','Soutine','Chaïm Soutine','vers 1923','Niveau -1 · Salle Soutine',NO,'🐇',
+    'Lapin mort pendu, matière de boucherie. Influence des peaux mortes de Rembrandt. Soutine peint la chair comme une question philosophique sur la vie et la mort.'),
+  a('soutine-arbre','Arbre couché','Soutine','Chaïm Soutine','vers 1921','Niveau -1 · Salle Soutine',NO,'🌲',
+    'Arbre tordu par le vent ou par une force interne. La nature chez Soutine n\'est jamais stable. Tout vibre, tout tremble, tout est en train de se transformer.'),
+  a('soutine-garcon-honneur','Garçon d\'honneur','Soutine','Chaïm Soutine','vers 1925','Niveau -1 · Salle Soutine',NO,'🤵',
+    'Enfant en habit de cérémonie, légèrement de guingois. La solennité de l\'habit contrastée avec la gaucherie vivante du corps. Soutine aimait les uniformes et les costumes.'),
+  a('soutine-faisan','Nature morte au faisan','Soutine','Chaïm Soutine','vers 1926','Niveau -1 · Salle Soutine',NO,'🦚',
+    'Faisan mort aux plumes encore brillantes. La mort rendue belle par la couleur. Soutine hérite de toute la tradition des natures mortes giboyeuses flamandes et hollandaises.'),
+  a('soutine-maison','La Maison blanche','Soutine','Chaïm Soutine','vers 1918','Niveau -1 · Salle Soutine',NO,'🏠',
+    'Maison de Céret, dans les Pyrénées. Soutine y a peint frénétiquement. La maison blanche semble animée, vivante, sur le point de se lever.'),
+  a('soutine-anglaise','La Jeune Anglaise','Soutine','Chaïm Soutine','vers 1934','Niveau -1 · Salle Soutine',NO,'👩',
+    'Portrait tardif d\'une femme, touche plus posée que dans ses années vingt. Soutine apaisé à la fin de sa vie mais toujours expressif, toujours tremblant de couleur.'),
+  a('soutine-garcon-etage','Le Garçon d\'étage','Soutine','Chaïm Soutine','vers 1927','Niveau -1 · Salle Soutine',NO,'🛎️',
+    'Serveur d\'hôtel en uniforme rouge vif. L\'uniforme comme armure et prison. Soutine revient plusieurs fois aux grooms et serveurs — figures urbaines de la condition humaine.'),
+  a('soutine-enfant-choeur','Enfant de chœur','Soutine','Chaïm Soutine','vers 1927–1928','Niveau -1 · Salle Soutine',NO,'⛪',
+    'Garçon en surplis blanc, expression grave. Soutine peignait les gens d\'Église — leurs habits d\'apparat contrastant avec leur humanité fragile.'),
+  a('soutine-paysage-perso','Paysage avec personnage','Soutine','Chaïm Soutine','vers 1919','Niveau -1 · Salle Soutine',NO,'🚶',
+    'Silhouette solitaire dans un paysage convulsif. Le personnage semble englouti par la matière picturale. Chez Soutine, la nature n\'est pas un décor, c\'est un état d\'âme.'),
+  a('soutine-gladieuls','Glaïeuls','Soutine','Chaïm Soutine','vers 1919','Niveau -1 · Salle Soutine',NO,'🌺',
+    'Fleurs dans un vase, touches rouges et roses sur fond sombre. Les fleurs de Soutine ont l\'air de souffrir. Même dans la beauté végétale, l\'angoisse est présente.'),
+  a('soutine-maisons','Les Maisons','Soutine','Chaïm Soutine','vers 1920','Niveau -1 · Salle Soutine',NO,'🏘️',
+    'Village de Céret, maisons dansantes. Soutine a peint ce village avec une intensité presque hallucinatoire. Il détruisait les toiles qu\'il jugeait ratées.'),
+  a('soutine-arbre-bleu','Le Gros Arbre bleu','Soutine','Chaïm Soutine','vers 1920','Niveau -1 · Salle Soutine',NO,'💙',
+    'Arbre monumental aux teintes bleues et froides. Un arbre comme un monument, une présence absolue dans le paysage. La couleur bleue chez Soutine est rare et saisissante.'),
+  a('soutine-paysage','Paysage','Soutine','Chaïm Soutine','vers 1920–1921','Niveau -1 · Salle Soutine',NO,'🌄',
+    'Paysage de Céret en mouvement permanent. La colline semble respirer, les maisons se penchent. Soutine peint l\'énergie interne du monde visible.'),
+  a('soutine-portrait-h','Portrait d\'homme — Emile Lejeune','Soutine','Chaïm Soutine','vers 1925','Niveau -1 · Salle Soutine',NO,'👨',
+    'Portrait d\'un homme du peuple, regard direct, veste usée. Soutine peint avec empathie les humbles et les laissés-pour-compte, comme lui-même l\'a été longtemps.'),
+  a('soutine-table','La Table','Soutine','Chaïm Soutine','vers 1921','Niveau -1 · Salle Soutine',NO,'🍽️',
+    'Table de cuisine avec objets posés. La matière picturale épaisse donne aux objets une présence physique intense. Cézanne revisité avec une violence expressive.'),
+  a('soutine-dindon2','Le Dindon','Soutine','Chaïm Soutine','vers 1925','Niveau -1 · Salle Soutine',NO,'🦃',
+    'Second dindon mort, variations sur la carcasse. Soutine revient obsessionnellement aux mêmes sujets. Chaque tableau est une nouvelle tentative d\'épuiser le motif.'),
+  a('soutine-boeuf','Bœuf et tête de veau','Soutine','Chaïm Soutine','vers 1925','Niveau -1 · Salle Soutine',NO,'🐄',
+    'Carcasse de bœuf et tête de veau, matière rouge et crue. Référence directe aux bœufs écorchés de Rembrandt. Soutine dialogue à travers les siècles.'),
+  a('soutine-poulet','Le Poulet plumé','Soutine','Chaïm Soutine','vers 1926','Niveau -1 · Salle Soutine',NO,'🐓',
+    'Poulet plumé suspendu par les pattes. Corps décharné, couleurs froides. La mort animale comme miroir de la condition humaine. Beauté dérangeante.'),
+/* UTRILLO */
+  a('utrillo-bernot','La Maison Bernot','Utrillo','Maurice Utrillo','vers 1924','Niveau -1 · Salle Utrillo',
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8d/Maurice_Utrillo_-_La_Maison_Bernot.jpg/1280px-Maurice_Utrillo_-_La_Maison_Bernot.jpg','🏘️',
+    'Rue de Montmartre, ciel blanc de plâtre. Utrillo peignait depuis sa fenêtre ou des cartes postales. Alcoolique interné plusieurs fois, la peinture comme seule paix.'),
+  a('utrillo-eglise-clign','Église de Clignancourt','Utrillo','Maurice Utrillo','vers 1909','Niveau -1 · Salle Utrillo',NO,'⛪',
+    'Façade blanche de l\'église Saint-Pierre-de-Clignancourt. Utrillo excelle dans les blancs — plâtres, calcaires, crépis. Le blanc parisien comme couleur à part entière.'),
+  a('utrillo-notre-dame','Notre-Dame','Utrillo','Maurice Utrillo','vers 1914','Niveau -1 · Salle Utrillo',NO,'🏛️',
+    'La cathédrale vue depuis la Seine. Utrillo peint les monuments célèbres avec la même intimité que les ruelles obscures. Paris comme ville intérieure.'),
+  a('utrillo-mont-cenis1','Rue du Mont-Cenis','Utrillo','Maurice Utrillo','vers 1910','Niveau -1 · Salle Utrillo',NO,'🛤️',
+    'Ruelle montmartroise en pente. La rue monte vers le ciel gris. Utrillo peint le même chemin des dizaines de fois. Chaque version est une humeur différente.'),
+  a('utrillo-cathedrale','Grande cathédrale ou cathédrale d\'Orléans','Utrillo','Maurice Utrillo','vers 1912','Niveau -1 · Salle Utrillo',NO,'🕌',
+    'Façade gothique peinte à la façon d\'une aquarelle sobre. Utrillo sort parfois de Montmartre pour peindre les cathédrales de province.'),
+  a('utrillo-berlioz','La Maison de Berlioz','Utrillo','Maurice Utrillo','vers 1914','Niveau -1 · Salle Utrillo',NO,'🎵',
+    'Maison du compositeur Berlioz à Montmartre, rue Saint-Vincent. Utrillo ignorait peut-être qui avait habité là. Il peignait les murs, pas les histoires.'),
+  a('utrillo-mont-cenis2','Rue du Mont-Cenis (variante)','Utrillo','Maurice Utrillo','vers 1912','Niveau -1 · Salle Utrillo',NO,'🏠',
+    'Second tableau de la même rue, lumière différente, saison différente. Utrillo revenait aux mêmes lieux comme on revient chez soi. La rue comme havre répété.'),
+  a('utrillo-saint-pierre','Église Saint-Pierre','Utrillo','Maurice Utrillo','vers 1908','Niveau -1 · Salle Utrillo',NO,'⛪',
+    'La plus ancienne église de Montmartre, voisine du Sacré-Cœur. Pierres blanches et ciel lumineux. Utrillo pendant sa période blanche, la plus célèbre.'),
+  a('utrillo-butte','Butte Pinson','Utrillo','Maurice Utrillo','vers 1912','Niveau -1 · Salle Utrillo',NO,'🌿',
+    'Colline de la Butte Pinson à Montmagny, paysage de banlieue. Utrillo sort de Montmartre et trouve la même mélancolie dans les terrains vagues et les murs nus.'),
+  a('utrillo-mairie','La Mairie au drapeau','Utrillo','Maurice Utrillo','vers 1912–1914','Niveau -1 · Salle Utrillo',NO,'🏛️',
+    'Mairie de village avec drapeau tricolore. Rare touche de couleur vive chez Utrillo. Le drapeau rouge, blanc et bleu claque dans un ciel de plâtre.')
+]}
+];
+
+/* ══════════════════════════════════════════════
+   STATE
+══════════════════════════════════════════════ */
+let selProfile=null,selMuseum='louvre',selArtwork=null,genText=null,isPlaying=false;
+let camStream=null,currentAudio=null,selVoice=voices[0].id;
+// Clés API en mémoire (survivent à la navigation dans la session)
+let _anthKey='',_elKey='';
+function getAnthKey(){return _anthKey||(()=>{try{return localStorage.getItem('anth-key')||'';}catch(e){return '';}})();}
+function getElKey(){return _elKey||(()=>{try{return localStorage.getItem('el-key')||'';}catch(e){return '';}})();}
+
+/* ══════════════════════════════════════════════
+   INIT
+══════════════════════════════════════════════ */
+function init(){
+  // Profiles
+  document.getElementById('profiles-grid').innerHTML=profiles.map(p=>`
+    <div class="profile-card" id="pc-${p.id}" onclick="selectProfile('${p.id}')">
+      <div class="profile-emoji">${p.emoji}</div>
+      <div><div class="profile-label">${p.label}</div><div class="profile-sub">${p.sub}</div></div>
+    </div>`).join('');
+  // Voice grid
+  document.getElementById('voice-grid').innerHTML=voices.map(v=>`
+    <div class="voice-card${v.id===selVoice?' selected':''}" id="vc-${v.id}" onclick="selectVoice('${v.id}')">
+      <div class="voice-card-icon">${v.icon}</div>
+      <div class="voice-card-name">${v.name}</div>
+      <div class="voice-card-desc">${v.desc}</div>
+    </div>`).join('');
+  renderTabs();renderArtworks();
+  // Restore saved prefs
+  try{
+    const sp=localStorage.getItem('ag-profile');
+    if(sp){const p=profiles.find(x=>x.id===sp);if(p){selProfile=p;document.getElementById('pc-'+p.id)?.classList.add('selected');document.getElementById('profile-next').disabled=false;}}
+    const sv=localStorage.getItem('el-voice');if(sv)selVoice=sv;
+    const ak=localStorage.getItem('anth-key')||'';
+    const sk=localStorage.getItem('el-key')||'';
+    if(ak){_anthKey=ak;document.getElementById('anth-key-input').value=ak;}
+    if(sk){_elKey=sk;document.getElementById('el-key-input').value=sk;}
+    updateSettingsBtn(!!sk,!!ak);
+    if(!ak){setTimeout(()=>{document.getElementById('settings-btn').classList.add('warn');document.getElementById('settings-btn').textContent='⚠';},500);}
+  }catch(e){}
+}
+
+function renderTabs(){
+  document.getElementById('museum-tabs').innerHTML=museums.map(m=>`
+    <button class="museum-tab${m.id===selMuseum?' active':''}" onclick="switchMuseum('${m.id}')">${m.name}</button>`).join('');
+}
+function renderArtworks(filter=''){
+  const m=museums.find(x=>x.id===selMuseum);
+  const q=filter.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  const list=filter?m.artworks.filter(a=>{
+    const t=(a.title+' '+a.artist).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    return t.includes(q);
+  }):m.artworks;
+  let html='',lastSec='';
+  for(const a of list){
+    if(a.section&&a.section!==lastSec){html+=`<div class="section-header">${a.section}</div>`;lastSec=a.section;}
+    html+=`<div class="artwork-card${selArtwork?.id===a.id?' selected':''}" onclick="selectArtwork('${a.id}')">
+      <div class="artwork-thumb"><img src="${a.image}" alt="" onerror="this.outerHTML='<span>${a.fb}</span>'"></div>
+      <div class="artwork-meta">
+        <div class="artwork-meta-title">${a.title}</div>
+        <div class="artwork-meta-artist">${a.artist}</div>
+        <div class="artwork-meta-room">${a.year}</div>
+      </div></div>`;
+  }
+  document.getElementById('artworks-grid').innerHTML=html||`<div style="color:var(--muted);font-size:13px;text-align:center;padding:20px 0">Aucun résultat</div>`;
+}
+function filterArtworks(q){renderArtworks(q);}
+function selectProfile(id){
+  selProfile=profiles.find(p=>p.id===id);
+  document.querySelectorAll('.profile-card').forEach(c=>c.classList.remove('selected'));
+  document.getElementById('pc-'+id).classList.add('selected');
+  document.getElementById('profile-next').disabled=false;
+  try{localStorage.setItem('ag-profile',id);}catch(e){}
+}
+function switchMuseum(id){selMuseum=id;document.getElementById('search-input').value='';renderTabs();renderArtworks();}
+function selectArtwork(id){
+  const m=museums.find(x=>x.id===selMuseum);
+  selArtwork=m.artworks.find(a=>a.id===id);
+  renderArtworks(document.getElementById('search-input').value);
+  document.getElementById('artwork-next').disabled=false;
+}
+function goToArtworks(){if(selProfile)goTo('artwork');}
+function goToGuide(){if(!selArtwork)return;renderGuide();goTo('guide');}
+function renderGuide(){
+  document.getElementById('artwork-display').innerHTML=`
+    <div class="artwork-img-wrap">
+      <span style="position:absolute">${selArtwork.fb}</span>
+      <img src="${selArtwork.image}" alt="" onerror="this.style.display='none'">
+      <div class="artwork-img-overlay"></div>
+    </div>
+    <div class="artwork-info-block">
+      <div class="ait">${selArtwork.title}</div>
+      <div class="aia">${selArtwork.artist} · ${selArtwork.year}</div>
+      <div class="air">${selArtwork.room||selArtwork.section}</div>
+    </div>`;
+  const elKey=getElKey();
+  document.getElementById('badge-wrap').innerHTML=`<div class="profile-badge">${selProfile.emoji} Guide · ${selProfile.label}${elKey?'<span class="premium-badge">🎙 ElevenLabs</span>':''}</div>`;
+  document.getElementById('audio-player').classList.remove('active');
+  const genBtn=document.getElementById('gen-btn');
+  genBtn.style.display='flex';
+  genBtn.disabled=false;
+  genBtn.innerHTML='🎧 Générer mon audioguide';
+  genBtn.onclick=generateGuide;
+  genText=null;stopAudio();
+}
+function goTo(s){
+  document.querySelectorAll('.step').forEach(x=>x.classList.remove('active'));
+  document.getElementById('step-'+s).classList.add('active');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+/* ══════════════════════════════════════════════
+   SETTINGS
+══════════════════════════════════════════════ */
+function openSettings(){document.getElementById('settings-modal').classList.add('active');}
+function closeSettings(){document.getElementById('settings-modal').classList.remove('active');}
+function selectVoice(id){
+  selVoice=id;
+  document.querySelectorAll('.voice-card').forEach(c=>c.classList.remove('selected'));
+  document.getElementById('vc-'+id).classList.add('selected');
+}
+function saveSettings(){
+  const anthKey=document.getElementById('anth-key-input').value.trim();
+  const elKey=document.getElementById('el-key-input').value.trim();
+  // Stocker en mémoire immédiatement
+  _anthKey=anthKey;
+  _elKey=elKey;
+  // Persister aussi en localStorage
+  try{
+    if(anthKey)localStorage.setItem('anth-key',anthKey);else localStorage.removeItem('anth-key');
+    if(elKey)localStorage.setItem('el-key',elKey);else localStorage.removeItem('el-key');
+    localStorage.setItem('el-voice',selVoice);
+  }catch(e){}
+  // Status Anthropic
+  const sa=document.getElementById('anth-key-status');
+  sa.className='key-status '+(anthKey?'ok':'ko');
+  sa.textContent=anthKey?'✓ Clé Anthropic enregistrée':'⚠ Clé Anthropic manquante';
+  // Status ElevenLabs
+  const se=document.getElementById('key-status');
+  se.className='key-status '+(elKey?'ok':'');
+  se.textContent=elKey?'✓ Voix ElevenLabs activée':'Voix navigateur (gratuite)';
+  updateSettingsBtn(!!elKey,!!anthKey);
+  // Reset le bouton génération si on était en état d'erreur
+  const genBtn=document.getElementById('gen-btn');
+  if(anthKey&&genBtn){
+    genBtn.innerHTML='🎧 Générer mon audioguide';
+    genBtn.onclick=generateGuide;
+    genBtn.disabled=false;
+  }
+  setTimeout(closeSettings,1400);
+}
+function updateSettingsBtn(elPremium,anthOk){
+  const btn=document.getElementById('settings-btn');
+  btn.className='settings-btn'+(elPremium?' premium':anthOk?'':' warn');
+  btn.textContent=elPremium?'🎙':anthOk?'⚙':'⚠';
+}
+
+/* ══════════════════════════════════════════════
+   CAMERA
+══════════════════════════════════════════════ */
+async function openCamera(){
+  document.getElementById('cam-overlay').classList.add('active');
+  document.getElementById('cam-loading').classList.remove('active');
+  document.getElementById('cap-btn').style.display='flex';
+  document.getElementById('cap-btn').disabled=false;
+  try{
+    camStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:1280}}});
+    document.getElementById('cam-video').srcObject=camStream;
+    document.getElementById('cam-hint').textContent='Centrez l\'œuvre dans le cadre';
+  }catch(e){document.getElementById('cam-hint').textContent='Accès caméra refusé';document.getElementById('cap-btn').disabled=true;}
+}
+function closeCamera(){
+  document.getElementById('cam-overlay').classList.remove('active');
+  if(camStream){camStream.getTracks().forEach(t=>t.stop());camStream=null;}
+  document.getElementById('cam-video').srcObject=null;
+}
+async function captureAndIdentify(){
+  const video=document.getElementById('cam-video');
+  const canvas=document.getElementById('cam-canvas');
+  canvas.width=video.videoWidth||640;canvas.height=video.videoHeight||480;
+  canvas.getContext('2d').drawImage(video,0,0);
+  const b64=canvas.toDataURL('image/jpeg',.82).split(',')[1];
+  const anthKey=getAnthKey();
+  if(!anthKey){closeCamera();alert('Ajoutez votre clé API Anthropic dans les paramètres ⚙');return;}
+  document.getElementById('cap-btn').style.display='none';
+  document.getElementById('cam-loading').classList.add('active');
+  document.getElementById('cam-hint').textContent='Analyse en cours…';
+  try{
+    const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":anthKey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+      body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:150,messages:[{role:"user",content:[
+        {type:"image",source:{type:"base64",media_type:"image/jpeg",data:b64}},
+        {type:"text",text:'Identifie cette œuvre. JSON uniquement, sans backticks.\nReconnue: {"found":true,"title":"titre français","artist":"prénom nom"}\nNon reconnue: {"found":false}'}
+      ]}]})});
+    const data=await res.json();
+    const result=JSON.parse(data.content[0].text.trim().replace(/```[\w]*|```/g,'').trim());
+    closeCamera();
+    if(result.found){const m=findInDB(result.title,result.artist);m?showFound(m):showKnownNotInDB(result.title,result.artist);}
+    else showNotFound();
+  }catch(e){
+    document.getElementById('cam-loading').classList.remove('active');
+    document.getElementById('cap-btn').style.display='flex';
+    document.getElementById('cap-btn').disabled=false;
+    document.getElementById('cam-hint').textContent='Erreur — réessayez';
+  }
+}
+function findInDB(title,artist){
+  const n=s=>s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  const t=n(title),a=n(artist);
+  for(const m of museums)for(const aw of m.artworks){
+    const at=n(aw.title),aa=n(aw.artist);
+    if((at.includes(t)||t.includes(at))&&(aa.includes(a.split(' ').pop())||a.includes(aa.split(' ').pop())))return aw;
+    if(at.includes(t)||t.includes(at))return aw;
+  }
+  return null;
+}
+function showFound(artwork){
+  selArtwork=artwork;
+  const r=document.getElementById('reco-result');
+  r.className='reco-result found active';
+  r.innerHTML=`<div class="reco-lbl ok">✓ Œuvre identifiée</div>
+    <div class="reco-title">${artwork.title}</div><div class="reco-artist">${artwork.artist} · ${artwork.year}</div>
+    <button class="reco-go" onclick="renderGuide();goTo('guide')">🎧 Lancer l'audioguide →</button>
+    <button class="reco-alt" onclick="document.getElementById('reco-result').classList.remove('active')">Choisir une autre œuvre</button>`;
+  document.getElementById('artwork-next').disabled=false;
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function showKnownNotInDB(title,artist){
+  const r=document.getElementById('reco-result');
+  r.className='reco-result active';
+  r.innerHTML=`<div class="reco-lbl ok">✓ ${title} — ${artist}</div>
+    <div style="font-size:12px;color:var(--muted);margin-top:6px;margin-bottom:12px">Pas encore dans notre base. Choisissez une autre œuvre.</div>
+    <button class="reco-alt" style="border-color:rgba(201,165,94,.3);color:var(--gold)" onclick="document.getElementById('reco-result').classList.remove('active')">Parcourir les œuvres</button>`;
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function showNotFound(){
+  const r=document.getElementById('reco-result');
+  r.className='reco-result active';
+  r.innerHTML=`<div class="reco-lbl ko">Œuvre non reconnue</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Rapprochez-vous, évitez les reflets, ou sélectionnez manuellement.</div>
+    <button class="cap-btn" onclick="openCamera()" style="padding:11px">Réessayer</button>
+    <button class="reco-alt" onclick="document.getElementById('reco-result').classList.remove('active')">Choisir manuellement</button>`;
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+/* ══════════════════════════════════════════════
+   AUDIO GENERATION
+══════════════════════════════════════════════ */
+const TTS_RULES=`
+RÈGLES IMPÉRATIVES pour la synthèse vocale :
+- Phrases courtes. Maximum quinze mots par phrase.
+- Aucune parenthèse, aucun tiret, aucun guillemet.
+- Les chiffres et dates en toutes lettres.
+- Les dimensions en toutes lettres.
+- Des virgules et des points pour créer les pauses naturelles.
+- Commence chaque phrase par un mot fort.
+- Aucune formule d'introduction ni de conclusion.
+- Comme un guide qui parle devant l'œuvre.`;
+
+async function generateGuide(){
+  const btn=document.getElementById('gen-btn');
+  btn.disabled=true;btn.style.display='none';
+
+  const anthKey=getAnthKey();
+  if(!anthKey){
+    btn.style.display='flex';btn.disabled=false;
+    btn.innerHTML='⚙ Configurer la clé API d\'abord';
+    btn.onclick=()=>{openSettings();};
+    return;
+  }
+
+  document.getElementById('loading').classList.add('active');
+  document.getElementById('loading-text').textContent='Personnalisation en cours…';
+
+  const prompt=`Tu es un guide de musée expert et passionné. ${selProfile.prompt}
+${TTS_RULES}
+Œuvre : "${selArtwork.title}" — ${selArtwork.artist}, ${selArtwork.year}
+${selArtwork.room?'Localisation : '+selArtwork.room:''}
+Contexte : ${selArtwork.ctx}
+Génère maintenant le commentaire audio.`;
+
+  try{
+    const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":anthKey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+      body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:900,messages:[{role:"user",content:prompt}]})});
+    const data=await res.json();
+    if(data.error){throw new Error(data.error.message);}
+    genText=data.content[0].text;
+    document.getElementById('loading').classList.remove('active');
+    document.getElementById('player-title').textContent=selArtwork.title;
+    document.getElementById('transcript').textContent=genText;
+    document.getElementById('audio-player').classList.add('active');
+
+    const elKey=getElKey();
+    if(elKey){
+      document.getElementById('loading-text').textContent='Synthèse vocale ElevenLabs…';
+      document.getElementById('loading').classList.add('active');
+      await speakWithElevenLabs(genText,elKey);
+      document.getElementById('loading').classList.remove('active');
+    } else {
+      setTimeout(()=>speakWithBrowser(genText),350);
+    }
+  }catch(e){
+    document.getElementById('loading').classList.remove('active');
+    btn.style.display='flex';btn.disabled=false;btn.innerHTML='⚠ Réessayer';
+  }
+}
+
+/* ══════════════════════════════════════════════
+   ELEVENLABS TTS
+══════════════════════════════════════════════ */
+async function speakWithElevenLabs(text,key){
+  try{
+    const res=await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${selVoice}`,{
+      method:'POST',
+      headers:{'xi-api-key':key,'Content-Type':'application/json'},
+      body:JSON.stringify({
+        text,
+        model_id:'eleven_multilingual_v2',
+        voice_settings:{stability:.45,similarity_boost:.8,style:.25,use_speaker_boost:true}
+      })
+    });
+    if(!res.ok)throw new Error('ElevenLabs '+res.status);
+    const blob=await res.blob();
+    const url=URL.createObjectURL(blob);
+    if(currentAudio){currentAudio.pause();currentAudio=null;}
+    currentAudio=new Audio(url);
+    currentAudio.onplay=()=>setPlaying(true);
+    currentAudio.onpause=()=>setPlaying(false);
+    currentAudio.onended=()=>setPlaying(false);
+    currentAudio.onerror=()=>setPlaying(false);
+    currentAudio.play();
+  }catch(e){
+    // Fallback to browser TTS
+    speakWithBrowser(text);
+  }
+}
+
+/* ══════════════════════════════════════════════
+   BROWSER TTS (fallback)
+══════════════════════════════════════════════ */
+function speakWithBrowser(t){
+  stopBrowserSpeech();
+  if(!window.speechSynthesis)return;
+  const u=new SpeechSynthesisUtterance(t);
+  u.lang='fr-FR';u.rate=selProfile?.rate||.88;u.pitch=selProfile?.pitch||1;
+  const go=()=>{
+    const vv=speechSynthesis.getVoices();
+    const best=vv.find(v=>v.lang.startsWith('fr')&&(v.name.includes('Neural')||v.name.includes('Premium')||v.name.includes('Enhanced')))
+              ||vv.find(v=>v.lang==='fr-FR')
+              ||vv.find(v=>v.lang.startsWith('fr'));
+    if(best)u.voice=best;
+    u.onstart=()=>setPlaying(true);u.onend=()=>setPlaying(false);u.onerror=()=>setPlaying(false);
+    speechSynthesis.speak(u);
+  };
+  speechSynthesis.getVoices().length>0?go():(speechSynthesis.onvoiceschanged=go);
+}
+function stopBrowserSpeech(){if(window.speechSynthesis)speechSynthesis.cancel();}
+function stopAudio(){
+  if(currentAudio){currentAudio.pause();currentAudio=null;}
+  stopBrowserSpeech();
+  setPlaying(false);
+}
+function togglePlay(){
+  if(!genText)return;
+  const elKey=getElKey();
+  if(elKey&&currentAudio){
+    if(isPlaying){currentAudio.pause();}else{currentAudio.play();}
+  } else if(elKey&&!currentAudio){
+    document.getElementById('loading').classList.add('active');
+    speakWithElevenLabs(genText,elKey).then(()=>document.getElementById('loading').classList.remove('active'));
+  } else {
+    if(isPlaying){speechSynthesis.pause();setPlaying(false);}
+    else if(speechSynthesis.paused){speechSynthesis.resume();setPlaying(true);}
+    else speakWithBrowser(genText);
+  }
+}
+function setPlaying(p){
+  isPlaying=p;
+  document.getElementById('play-btn').textContent=p?'⏸':'▶';
+  document.getElementById('player-status').textContent=p?'▸ En lecture…':'En pause · cliquer pour reprendre';
+  document.getElementById('waveform').classList.toggle('playing',p);
+}
+
+init();
+</script>
+</body>
+</html>
