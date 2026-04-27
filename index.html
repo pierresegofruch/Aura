@@ -169,7 +169,17 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 .settings-input{width:100%;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--cream);font-family:'DM Sans',sans-serif;font-size:13px;outline:none;transition:border-color .2s;font-family:monospace}
 .settings-input:focus{border-color:var(--gold)}
 .settings-input::placeholder{color:var(--muted)}
-.voice-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+.load-voices-btn{width:100%;padding:10px;background:transparent;border:1px solid var(--gold);color:var(--gold);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;transition:all .2s;margin-bottom:12px}
+.load-voices-btn:hover{background:var(--gold-dim)}
+.load-voices-btn:disabled{opacity:.4;cursor:not-allowed}
+.voice-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 12px;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:10px}
+.voice-card:hover{border-color:var(--gold)}
+.voice-card.selected{border-color:var(--gold);background:var(--gold-dim)}
+.voice-card-icon{font-size:18px;flex-shrink:0}
+.voice-card-name{font-size:13px;font-weight:500}
+.voice-card-desc{font-size:10px;color:var(--muted)}
+.voice-card-preview{margin-left:auto;background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:2px 4px;flex-shrink:0;transition:color .2s}
+.voice-card-preview:hover{color:var(--gold)}
 .voice-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px;cursor:pointer;transition:all .2s;text-align:center}
 .voice-card:hover{border-color:var(--gold)}
 .voice-card.selected{border-color:var(--gold);background:var(--gold-dim)}
@@ -252,6 +262,11 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
         <div class="wbar"></div><div class="wbar"></div><div class="wbar"></div><div class="wbar"></div>
         <div class="wbar"></div><div class="wbar"></div><div class="wbar"></div><div class="wbar"></div>
       </div>
+      <div id="el-upsell" style="display:none;background:rgba(90,154,110,0.08);border:1px solid rgba(90,154,110,.3);border-radius:9px;padding:12px 14px;margin-bottom:14px">
+        <div style="font-size:11px;color:var(--green);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">🎙 Voix navigateur détectée</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:10px;line-height:1.6">Activez ElevenLabs pour une voix naturelle — la différence est immédiate.</div>
+        <button onclick="openSettings();loadELVoices()" style="width:100%;padding:9px;background:var(--green);color:#0a0806;border:none;border-radius:7px;font-family:'Cormorant Garant',serif;font-size:14px;font-weight:600;cursor:pointer">Activer la voix ElevenLabs →</button>
+      </div>
       <div class="transcript" id="transcript"></div>
     </div>
     <button class="cta-btn" onclick="goTo('artwork')">← Voir d'autres œuvres</button>
@@ -295,8 +310,13 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
       <div class="key-link"><a href="https://elevenlabs.io" target="_blank">→ elevenlabs.io</a></div>
     </div>
     <div class="settings-section">
-      <div class="settings-label">Choisir une voix</div>
-      <div class="voice-grid" id="voice-grid"></div>
+      <div class="settings-label">Choisir une voix ElevenLabs</div>
+      <div class="settings-desc" id="voice-desc">Entrez votre clé ElevenLabs ci-dessus puis cliquez sur Charger pour voir vos voix disponibles.</div>
+      <button class="load-voices-btn" id="load-voices-btn" onclick="loadELVoices()">Charger mes voix →</button>
+      <div id="voice-filter-wrap" style="display:none;margin-bottom:10px">
+        <input class="search-input" id="voice-filter" type="text" placeholder="Filtrer par nom…" oninput="filterVoices(this.value)" style="padding:8px 12px">
+      </div>
+      <div class="voice-grid" id="voice-grid" style="max-height:320px;overflow-y:auto"></div>
     </div>
     <button class="save-btn" onclick="saveSettings()">Enregistrer</button>
   </div>
@@ -322,12 +342,8 @@ const profiles=[
 /* ══════════════════════════════════════════════
    VOICES (ElevenLabs)
 ══════════════════════════════════════════════ */
-const voices=[
-  {id:'pNInz6obpgDQGcFmaJgB',name:'Adam',desc:'Voix masculine, chaleureuse',icon:'🎙️'},
-  {id:'EXAVITQu4vr4xnSDxMaL',name:'Sarah',desc:'Voix féminine, posée',icon:'🎤'},
-  {id:'VR6AewLTigWG4xSOukaG',name:'Arnold',desc:'Voix masculine, posée',icon:'🗣️'},
-  {id:'21m00Tcm4TlvDq8ikWAM',name:'Rachel',desc:'Voix féminine, douce',icon:'💬'}
-];
+const voices=[];// sera chargé dynamiquement depuis ElevenLabs
+let loadedVoices=[];
 
 /* ══════════════════════════════════════════════
    MUSEUMS & ARTWORKS
@@ -717,7 +733,7 @@ const museums=[
    STATE
 ══════════════════════════════════════════════ */
 let selProfile=null,selMuseum='louvre',selArtwork=null,genText=null,isPlaying=false;
-let camStream=null,currentAudio=null,selVoice=voices[0].id;
+let camStream=null,currentAudio=null,selVoice='';
 // Clés API en mémoire (survivent à la navigation dans la session)
 let _anthKey='',_elKey='';
 function getAnthKey(){return _anthKey||(()=>{try{return localStorage.getItem('anth-key')||'';}catch(e){return '';}})();}
@@ -732,13 +748,6 @@ function init(){
     <div class="profile-card" id="pc-${p.id}" onclick="selectProfile('${p.id}')">
       <div class="profile-emoji">${p.emoji}</div>
       <div><div class="profile-label">${p.label}</div><div class="profile-sub">${p.sub}</div></div>
-    </div>`).join('');
-  // Voice grid
-  document.getElementById('voice-grid').innerHTML=voices.map(v=>`
-    <div class="voice-card${v.id===selVoice?' selected':''}" id="vc-${v.id}" onclick="selectVoice('${v.id}')">
-      <div class="voice-card-icon">${v.icon}</div>
-      <div class="voice-card-name">${v.name}</div>
-      <div class="voice-card-desc">${v.desc}</div>
     </div>`).join('');
   renderTabs();renderArtworks();
   // Restore saved prefs
@@ -829,10 +838,13 @@ function goTo(s){
 ══════════════════════════════════════════════ */
 function openSettings(){document.getElementById('settings-modal').classList.add('active');}
 function closeSettings(){document.getElementById('settings-modal').classList.remove('active');}
-function selectVoice(id){
+function selectVoice(id,name){
   selVoice=id;
   document.querySelectorAll('.voice-card').forEach(c=>c.classList.remove('selected'));
-  document.getElementById('vc-'+id).classList.add('selected');
+  const card=document.getElementById('vc-'+id);
+  if(card)card.classList.add('selected');
+  // Mettre à jour le badge dans le player si actif
+  if(name)document.querySelectorAll('.premium-badge').forEach(b=>b.textContent='🎙 '+name);
 }
 function saveSettings(){
   const anthKey=document.getElementById('anth-key-input').value.trim();
@@ -1022,29 +1034,125 @@ Génère maintenant le commentaire audio.`;
 /* ══════════════════════════════════════════════
    ELEVENLABS TTS
 ══════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════
+   ELEVENLABS — CHARGEMENT DES VOIX
+══════════════════════════════════════════════ */
+async function loadELVoices(){
+  const key=document.getElementById('el-key-input').value.trim()||getElKey();
+  if(!key){
+    document.getElementById('voice-desc').textContent='⚠ Entrez d\'abord votre clé ElevenLabs.';
+    return;
+  }
+  const btn=document.getElementById('load-voices-btn');
+  btn.disabled=true;btn.textContent='Chargement…';
+  try{
+    const res=await fetch('https://api.elevenlabs.io/v1/voices',{headers:{'xi-api-key':key}});
+    if(!res.ok)throw new Error(res.status);
+    const data=await res.json();
+    // Tri : voix fr en premier, puis multilingues, puis autres
+    loadedVoices=data.voices.sort((a,b)=>{
+      const aFr=((a.labels?.language||'')+'').toLowerCase().includes('fr');
+      const bFr=((b.labels?.language||'')+'').toLowerCase().includes('fr');
+      const aML=(a.labels?.language||'').toLowerCase().includes('multi')||!a.labels?.language;
+      const bML=(b.labels?.language||'').toLowerCase().includes('multi')||!b.labels?.language;
+      if(aFr&&!bFr)return -1;if(bFr&&!aFr)return 1;
+      if(aML&&!bML)return -1;if(bML&&!aML)return 1;
+      return a.name.localeCompare(b.name);
+    });
+    renderVoiceGrid(loadedVoices);
+    document.getElementById('voice-filter-wrap').style.display='block';
+    document.getElementById('voice-desc').textContent=`${loadedVoices.length} voix disponibles — les premières sont recommandées pour le français.`;
+    btn.textContent='↺ Recharger';btn.disabled=false;
+  }catch(e){
+    document.getElementById('voice-desc').textContent='Erreur de chargement — vérifiez votre clé ElevenLabs.';
+    btn.textContent='Réessayer';btn.disabled=false;
+  }
+}
+
+function renderVoiceGrid(list){
+  document.getElementById('voice-grid').innerHTML=list.map(v=>{
+    const lang=v.labels?.language||v.labels?.accent||'multilingue';
+    const gender=v.labels?.gender==='female'?'♀':'♂';
+    const isFr=lang.toLowerCase().includes('fr');
+    const badge=isFr?'🇫🇷 ':lang.toLowerCase().includes('multi')?'🌍 ':'';
+    return`<div class="voice-card${v.voice_id===selVoice?' selected':''}" id="vc-${v.voice_id}" onclick="selectVoice('${v.voice_id}','${v.name.replace(/'/g,"\\'")}')">
+      <div class="voice-card-icon">${gender}</div>
+      <div style="flex:1;min-width:0">
+        <div class="voice-card-name">${badge}${v.name}</div>
+        <div class="voice-card-desc">${lang}</div>
+      </div>
+      <button class="voice-card-preview" onclick="previewVoice(event,'${v.voice_id}')" title="Écouter">▶</button>
+    </div>`;
+  }).join('');
+}
+
+function filterVoices(q){
+  const filtered=loadedVoices.filter(v=>v.name.toLowerCase().includes(q.toLowerCase())||(v.labels?.language||'').toLowerCase().includes(q.toLowerCase()));
+  renderVoiceGrid(filtered);
+}
+
+let previewAudio=null;
+async function previewVoice(e,voiceId){
+  e.stopPropagation();
+  const key=document.getElementById('el-key-input').value.trim()||getElKey();
+  if(!key)return;
+  if(previewAudio){previewAudio.pause();previewAudio=null;}
+  const btn=e.currentTarget;
+  btn.textContent='…';
+  try{
+    const res=await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,{
+      method:'POST',
+      headers:{'xi-api-key':key,'Content-Type':'application/json'},
+      body:JSON.stringify({
+        text:'Devant vous, le chef-d\'œuvre de Monet. La lumière change à chaque instant.',
+        model_id:'eleven_multilingual_v2',
+        voice_settings:{stability:.35,similarity_boost:.8,style:.4,use_speaker_boost:true}
+      })
+    });
+    if(!res.ok)throw new Error();
+    const blob=await res.blob();
+    previewAudio=new Audio(URL.createObjectURL(blob));
+    previewAudio.onended=()=>{btn.textContent='▶';};
+    previewAudio.play();
+    btn.textContent='■';
+  }catch(e){btn.textContent='▶';}
+}
+
+/* ══════════════════════════════════════════════
+   ELEVENLABS TTS — GÉNÉRATION PRINCIPALE
+══════════════════════════════════════════════ */
 async function speakWithElevenLabs(text,key){
   try{
-    const res=await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${selVoice}`,{
+    const res=await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${selVoice}?optimize_streaming_latency=0`,{
       method:'POST',
       headers:{'xi-api-key':key,'Content-Type':'application/json'},
       body:JSON.stringify({
         text,
         model_id:'eleven_multilingual_v2',
-        voice_settings:{stability:.45,similarity_boost:.8,style:.25,use_speaker_boost:true}
+        language_code:'fr', // force le français
+        voice_settings:{
+          stability:.32,         // plus bas = plus expressif et varié
+          similarity_boost:.82,  // fidélité à la voix originale
+          style:.5,              // expressivité stylistique élevée
+          use_speaker_boost:true // clarté et présence
+        }
       })
     });
-    if(!res.ok)throw new Error('ElevenLabs '+res.status);
+    if(!res.ok){
+      const err=await res.json().catch(()=>({detail:'Erreur ElevenLabs '+res.status}));
+      throw new Error(err.detail||res.status);
+    }
     const blob=await res.blob();
     const url=URL.createObjectURL(blob);
-    if(currentAudio){currentAudio.pause();currentAudio=null;}
+    if(currentAudio){currentAudio.pause();URL.revokeObjectURL(currentAudio.src);currentAudio=null;}
     currentAudio=new Audio(url);
-    currentAudio.onplay=()=>setPlaying(true);
+    currentAudio.onplay=()=>{setPlaying(true);document.getElementById('el-upsell').style.display='none';};
     currentAudio.onpause=()=>setPlaying(false);
-    currentAudio.onended=()=>setPlaying(false);
+    currentAudio.onended=()=>{setPlaying(false);URL.revokeObjectURL(url);};
     currentAudio.onerror=()=>setPlaying(false);
-    currentAudio.play();
+    await currentAudio.play();
   }catch(e){
-    // Fallback to browser TTS
+    console.warn('ElevenLabs error:',e.message);
     speakWithBrowser(text);
   }
 }
@@ -1055,15 +1163,28 @@ async function speakWithElevenLabs(text,key){
 function speakWithBrowser(t){
   stopBrowserSpeech();
   if(!window.speechSynthesis)return;
+  // Afficher le banner ElevenLabs
+  document.getElementById('el-upsell').style.display=getElKey()?'none':'block';
+
   const u=new SpeechSynthesisUtterance(t);
-  u.lang='fr-FR';u.rate=selProfile?.rate||.88;u.pitch=selProfile?.pitch||1;
+  u.lang='fr-FR';
+  u.rate=selProfile?.rate||.86;
+  u.pitch=selProfile?.pitch||1;
+  // Sélectionner la meilleure voix française disponible
   const go=()=>{
     const vv=speechSynthesis.getVoices();
-    const best=vv.find(v=>v.lang.startsWith('fr')&&(v.name.includes('Neural')||v.name.includes('Premium')||v.name.includes('Enhanced')))
-              ||vv.find(v=>v.lang==='fr-FR')
-              ||vv.find(v=>v.lang.startsWith('fr'));
-    if(best)u.voice=best;
-    u.onstart=()=>setPlaying(true);u.onend=()=>setPlaying(false);u.onerror=()=>setPlaying(false);
+    // Priorité : voix neural/premium française > fr-FR standard > fr générique
+    const ranked=[
+      vv.find(v=>v.lang==='fr-FR'&&(v.name.includes('Thomas')||v.name.includes('Amélie'))),
+      vv.find(v=>v.lang==='fr-FR'&&(v.name.includes('Neural')||v.name.includes('Premium')||v.name.includes('Enhanced')||v.name.includes('Natural'))),
+      vv.find(v=>v.lang==='fr-FR'&&!v.name.toLowerCase().includes('compact')),
+      vv.find(v=>v.lang==='fr-FR'),
+      vv.find(v=>v.lang.startsWith('fr')),
+    ].find(Boolean);
+    if(ranked)u.voice=ranked;
+    u.onstart=()=>setPlaying(true);
+    u.onend=()=>setPlaying(false);
+    u.onerror=()=>setPlaying(false);
     speechSynthesis.speak(u);
   };
   speechSynthesis.getVoices().length>0?go():(speechSynthesis.onvoiceschanged=go);
